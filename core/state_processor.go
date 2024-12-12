@@ -155,8 +155,6 @@ func applyTransaction(msg *Message, config *params.ChainConfig, gp *GasPool, sta
 
 	// Set the receipt logs and create the bloom filter.
 	receipt.Logs = statedb.GetLogs(tx.Hash(), blockNumber.Uint64(), blockHash)
-	fmt.Printf("receipt.Logs: %v\n", receipt.Logs)
-
 	receipt.Bloom = types.CreateBloom(types.Receipts{receipt})
 	receipt.BlockHash = blockHash
 	receipt.BlockNumber = blockNumber

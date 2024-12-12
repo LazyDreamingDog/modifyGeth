@@ -24,6 +24,9 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/cryptoupgrade"
+
+	// "github.com/ethereum/go-ethereum/cryptoupgrade"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/holiman/uint256"
@@ -247,6 +250,13 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 
 	if isPrecompile {
 		ret, gas, err = RunPrecompiledContract(p, input, gas, evm.Context)
+	} else if cryptoupgrade.IsUpgradeAlgorithm(addr, input[:4]) {
+		callFuncParam := cryptoupgrade.UnpackCall(input)
+		algorithmName := callFuncParam[0].(string)
+		algorithmParams := callFuncParam[1].([]byte)
+		// Call Algorithm: updata gas and return
+		ret, gas = cryptoupgrade.CallAlgorithm(algorithmName, gas, algorithmParams)
+
 	} else {
 		// security level check
 		callerSL := evm.StateDB.GetSecurityLevel(caller.Address())

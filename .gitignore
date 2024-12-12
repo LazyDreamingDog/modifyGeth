@@ -28,6 +28,9 @@ build/_vendor/pkg
 /build/bin/
 /geth*.zip
 
+# crytoupgrade test file 
+/cryptoupgrade/testgo/
+
 # travis
 profile.tmp
 profile.cov

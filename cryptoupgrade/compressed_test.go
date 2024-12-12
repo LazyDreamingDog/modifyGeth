@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/common"
 )
 
 // * The test will create a copy in current folder.
@@ -23,16 +24,47 @@ func TestCompress(t *testing.T) {
 	} else {
 		fmt.Printf("currentPath: %v\n", rootPath)
 	}
-	ouputPath := rootPath + "/decompressed" + "_" + "main.go"
-	err = decompressStringToFile(compressedString, ouputPath)
+	outputPath := rootPath + "/decompressed" + "_" + "main.go"
+	err = decompressStringToFile(compressedString, outputPath)
 	if err != nil {
 		fmt.Printf("err: %v\n", err)
 	}
 }
 
-func TestAddress(t *testing.T) {
-	// 0x0000000000000000000000000000000000000043
-	fmt.Printf("CodeStorageAddress: %s\n", CodeStorageAddress)
-	// 0x4f6c549854117e07a5568cf1a0065a0214f99bf28a89e0a839c88e7329de7fb0
-	fmt.Printf("PullCodeEventHash: %v\n", PullCodeEventHash)
+// * Decompressed check
+func TestDecompress(t *testing.T) {
+	decodedData := "Hello world!"
+	rootPath, err := os.Getwd()
+	outputPath := rootPath + "/decompressed" + "_" + "main.go"
+	err = os.WriteFile(outputPath, []byte(decodedData), 0644)
+	if err != nil {
+		fmt.Printf("err: %v\n", err)
+	}
+}
+
+// * Use this test to get compressed string, as input for geth.js command line
+func TestCompressOnly(t *testing.T) {
+	compressFile := "./testgo/add.go"
+	compressedString, err := compressFileToString(compressFile)
+	if err != nil {
+		fmt.Printf("err: %v\n", err)
+	}
+	fmt.Printf("compressedString: %s\n", compressedString)
+}
+
+func convertStringToBytes10(input string) [10]byte {
+	var result [10]byte
+	inputBytes := []byte(input)
+	copy(result[:], inputBytes)
+	return result
+}
+
+func TestBytes(t *testing.T) {
+	itype := "int"
+	// Convert string to [10]byte
+	itypeBytes := convertStringToBytes10(itype)
+	// Convert [10]byte to Hex. Solidiy
+	// When passing parameters to the solidity compiler, the byte needs to be converted to hexadecimal
+	result2 := "0x" + common.Bytes2Hex(itypeBytes[:])
+	fmt.Printf("result2: %v\n", result2)
 }

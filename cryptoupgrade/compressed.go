@@ -8,18 +8,18 @@ import (
 	"os"
 )
 
-// * Serialize .go file to string 
+// * Serialize .go file to string
 func compressFileToString(filePath string) (string, error) {
 	fileData, err := os.ReadFile(filePath)
 	if err != nil {
-			return "", err
+		return "", err
 	}
 	// use gzip to compress
 	var buffer bytes.Buffer
 	writer := gzip.NewWriter(&buffer)
 	_, err = writer.Write(fileData)
 	if err != nil {
-			return "", err
+		return "", err
 	}
 	writer.Close()
 	// Use base64 encoding
@@ -29,13 +29,13 @@ func compressFileToString(filePath string) (string, error) {
 }
 
 // * Deserialize string to .go file
-func decompressStringToFile(compressedString, outputPath string) error {
+func decompressStringToFile(compressedString string, outputPath string) error {
 	// Decode base64
 	compressedData, err := base64.StdEncoding.DecodeString(compressedString)
 	if err != nil {
 		return err
 	}
-	// Use gzip to zip 
+	// Use gzip to zip
 	reader, err := gzip.NewReader(bytes.NewReader(compressedData))
 	if err != nil {
 		return err
