@@ -840,13 +840,23 @@ func (e *executor) executeNewTxBatch(timestamp int64, txs types.Transactions, le
 		}
 	}
 
+	// Split transactions into normal and external txs based on destination address
+	var normalTxs, externalTxs types.Transactions
+	for _, tx := range txs {
+		if tx.To() != nil && *tx.To() == params.ExternalExecutionAddress {
+			externalTxs = append(externalTxs, tx)
+		} else {
+			normalTxs = append(normalTxs, tx)
+		}
+	}
+
 	// Count PoW transactions and total gas
 	powCount := uint64(0)
 	totalGas := uint64(0)
-	txCount := uint64(len(txs))
+	txCount := uint64(len(normalTxs))
 
 	if txCount > 0 {
-		for _, tx := range txs {
+		for _, tx := range normalTxs {
 			if tx.Type() == types.PowTxType {
 				powCount++
 			}
@@ -871,12 +881,17 @@ func (e *executor) executeNewTxBatch(timestamp int64, txs types.Transactions, le
 		return
 	}
 
-	e.executeTransactions(work, txs)
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go e.executeTransactions(work, normalTxs, &wg)
+	go e.executeTransactions(work, externalTxs, &wg)
+	wg.Wait()
 	e.writeToChain(work)
 }
 
 // 串行地执行交易，会返回一个Logs，或许以后会有用
-func (e *executor) executeTransactions(env *executor_env, txs types.Transactions) []*types.Log {
+func (e *executor) executeTransactions(env *executor_env, txs types.Transactions, wg *sync.WaitGroup) []*types.Log {
+	defer wg.Done()
 	gasLimit := env.header.GasLimit
 	if env.gasPool == nil {
 		env.gasPool = new(core.GasPool).AddGas(gasLimit)
@@ -966,6 +981,7 @@ func (e *executor) executeTransaction(env *executor_env, tx *types.Transaction) 
 		}
 	}
 
+	// TODO: may not need this
 	// offchain tx executor
 	// The first three bytes, determine the transaction type, and remove the field that identifies the type
 	data := tx.Data()

@@ -203,4 +203,7 @@ var (
 	Fmax                     = common.NewRational(6, 5)
 	Kp                       = common.NewRational(1, 10)
 	Ki                       = common.NewRational(1, 100)
+
+	// newly added params here
+	ExternalExecutionAddress = common.HexToAddress("0x0000000000000000000000000000000000000000")
 )
