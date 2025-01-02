@@ -17,6 +17,8 @@
 package state
 
 import (
+	"math/big"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/holiman/uint256"
 )
@@ -109,6 +111,14 @@ type (
 	balanceChange struct {
 		account *common.Address
 		prev    *uint256.Int
+	}
+	interestChange struct {
+		account *common.Address
+		prev    *uint256.Int
+	}
+	blockNumberChange struct {
+		account *common.Address
+		prev    *big.Int
 	}
 	nonceChange struct {
 		account *common.Address
@@ -213,6 +223,22 @@ func (ch balanceChange) revert(s *StateDB) {
 }
 
 func (ch balanceChange) dirtied() *common.Address {
+	return ch.account
+}
+
+func (ch interestChange) revert(s *StateDB) {
+	s.getStateObject(*ch.account).setInterest(ch.prev)
+}
+
+func (ch interestChange) dirtied() *common.Address {
+	return ch.account
+}
+
+func (ch blockNumberChange) revert(s *StateDB) {
+	s.getStateObject(*ch.account).SetLastNumber(ch.prev)
+}
+
+func (ch blockNumberChange) dirtied() *common.Address {
 	return ch.account
 }
 

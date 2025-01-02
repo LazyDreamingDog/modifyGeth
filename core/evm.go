@@ -17,6 +17,7 @@
 package core
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -183,4 +184,13 @@ func CanTransfer(db vm.StateDB, addr common.Address, amount *uint256.Int) bool {
 func Transfer(db vm.StateDB, sender, recipient common.Address, amount *uint256.Int) {
 	db.SubBalance(sender, amount)
 	db.AddBalance(recipient, amount)
+	// Transfer interest to recipient
+	rate := db.GetTransferInterestRate()
+	interest := db.GetInterest(sender)
+	// Transfer interst= rate * interest
+	tranInterest := interest.Mul(interest, uint256.NewInt(rate))
+	fmt.Printf("%s transfer %v interest to %s\n", sender, tranInterest, recipient)
+	db.AddInterest(recipient, tranInterest)
+	db.SubInterest(sender, tranInterest)
+
 }

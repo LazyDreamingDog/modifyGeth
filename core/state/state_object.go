@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -438,6 +439,35 @@ func (s *stateObject) setBalance(amount *uint256.Int) {
 	s.data.Balance = amount
 }
 
+// Interest revent method
+func (s *stateObject) AddInterest(amount *uint256.Int) {
+	// EIP161: We must check emptiness for the objects such that the account
+	// clearing (0,0,0 objects) can take effect.
+	if amount.Sign() == 0 {
+		if s.empty() {
+			s.touch()
+			return
+		}
+	}
+	s.setInterest(new(uint256.Int).Add(s.Balance(), amount))
+}
+
+func (s *stateObject) SubInterest(amount *uint256.Int) {
+	if amount.Sign() == 0 {
+		return
+	}
+	s.setInterest(new(uint256.Int).Sub(s.Balance(), amount))
+}
+
+func (s *stateObject) setInterest(amount *uint256.Int) {
+	// Record edit journey, if tx revert need roll up
+	s.db.journal.append(interestChange{
+		account: &s.address,
+		prev:    amount,
+	})
+	s.data.Interest = amount
+}
+
 func (s *stateObject) deepCopy(db *StateDB) *stateObject {
 	obj := &stateObject{
 		db:       db,
@@ -517,6 +547,14 @@ func (s *stateObject) setCode(codeHash common.Hash, code []byte) {
 	s.dirtyCode = true
 }
 
+func (s *stateObject) SetLastNumber(num *big.Int) {
+	s.db.journal.append(blockNumberChange{
+		account: &s.address,
+		prev:    s.data.LastBlockNumber,
+	})
+	s.data.LastBlockNumber.Set(num)
+}
+
 func (s *stateObject) SetNonce(nonce uint64) {
 	s.db.journal.append(nonceChange{
 		account: &s.address,
@@ -535,6 +573,10 @@ func (s *stateObject) CodeHash() []byte {
 
 func (s *stateObject) Balance() *uint256.Int {
 	return s.data.Balance
+}
+
+func (s *stateObject) Interest() *uint256.Int {
+	return s.data.Interest
 }
 
 func (s *stateObject) Nonce() uint64 {

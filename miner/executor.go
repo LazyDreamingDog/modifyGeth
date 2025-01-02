@@ -928,8 +928,9 @@ func (e *executor) executeTransactions(env *executor_env, txs types.Transactions
 			}
 		}
 
-		// TODO: How to transimit rate from govern.
-		env.state.SetInterestRate(1) // 1% interest rate
+		// Set interest rate and transfer interest rate
+		env.state.SetInterestRate(params.InterestRate)
+		env.state.SetTransferInterestRate(params.TransferInterestRate)
 
 		env.state.SetTxContext(tx.Hash(), env.tcount)
 		logs, err := e.executeTransaction(env, tx)
