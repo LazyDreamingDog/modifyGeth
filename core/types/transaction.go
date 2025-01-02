@@ -50,6 +50,7 @@ const (
 	BlobTxType          = 0x03
 	PowTxType           = 0x04 // New transaction type
 	DynamicCryptoTxType = 0x05
+	SystemTxType        = 0x06
 )
 
 // Transaction is an Ethereum transaction.

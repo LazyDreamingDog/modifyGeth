@@ -19,8 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	PoTExecutor_GetTxs_FullMethodName    = "/pb.PoTExecutor/GetTxs"
-	PoTExecutor_VerifyTxs_FullMethodName = "/pb.PoTExecutor/VerifyTxs"
+	PoTExecutor_GetTxs_FullMethodName             = "/pb.PoTExecutor/GetTxs"
+	PoTExecutor_VerifyTxs_FullMethodName          = "/pb.PoTExecutor/VerifyTxs"
+	PoTExecutor_ExecuteTxs_FullMethodName         = "/pb.PoTExecutor/ExecuteTxs"
+	PoTExecutor_VerifyIncensentive_FullMethodName = "/pb.PoTExecutor/VerifyIncensentive"
 )
 
 // PoTExecutorClient is the client API for PoTExecutor service.
@@ -29,6 +31,8 @@ const (
 type PoTExecutorClient interface {
 	GetTxs(ctx context.Context, in *GetTxRequest, opts ...grpc.CallOption) (*GetTxResponse, error)
 	VerifyTxs(ctx context.Context, in *VerifyTxRequest, opts ...grpc.CallOption) (*VerifyTxResponse, error)
+	ExecuteTxs(ctx context.Context, in *ExecuteTxRequest, opts ...grpc.CallOption) (*ExecuteTxResponse, error)
+	VerifyIncensentive(ctx context.Context, in *IncensentiveVerifyRequest, opts ...grpc.CallOption) (*IncensentiveVerifyResponse, error)
 }
 
 type poTExecutorClient struct {
@@ -59,12 +63,34 @@ func (c *poTExecutorClient) VerifyTxs(ctx context.Context, in *VerifyTxRequest, 
 	return out, nil
 }
 
+func (c *poTExecutorClient) ExecuteTxs(ctx context.Context, in *ExecuteTxRequest, opts ...grpc.CallOption) (*ExecuteTxResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ExecuteTxResponse)
+	err := c.cc.Invoke(ctx, PoTExecutor_ExecuteTxs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *poTExecutorClient) VerifyIncensentive(ctx context.Context, in *IncensentiveVerifyRequest, opts ...grpc.CallOption) (*IncensentiveVerifyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(IncensentiveVerifyResponse)
+	err := c.cc.Invoke(ctx, PoTExecutor_VerifyIncensentive_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PoTExecutorServer is the server API for PoTExecutor service.
 // All implementations must embed UnimplementedPoTExecutorServer
 // for forward compatibility.
 type PoTExecutorServer interface {
 	GetTxs(context.Context, *GetTxRequest) (*GetTxResponse, error)
 	VerifyTxs(context.Context, *VerifyTxRequest) (*VerifyTxResponse, error)
+	ExecuteTxs(context.Context, *ExecuteTxRequest) (*ExecuteTxResponse, error)
+	VerifyIncensentive(context.Context, *IncensentiveVerifyRequest) (*IncensentiveVerifyResponse, error)
 	mustEmbedUnimplementedPoTExecutorServer()
 }
 
@@ -80,6 +106,12 @@ func (UnimplementedPoTExecutorServer) GetTxs(context.Context, *GetTxRequest) (*G
 }
 func (UnimplementedPoTExecutorServer) VerifyTxs(context.Context, *VerifyTxRequest) (*VerifyTxResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method VerifyTxs not implemented")
+}
+func (UnimplementedPoTExecutorServer) ExecuteTxs(context.Context, *ExecuteTxRequest) (*ExecuteTxResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ExecuteTxs not implemented")
+}
+func (UnimplementedPoTExecutorServer) VerifyIncensentive(context.Context, *IncensentiveVerifyRequest) (*IncensentiveVerifyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method VerifyIncensentive not implemented")
 }
 func (UnimplementedPoTExecutorServer) mustEmbedUnimplementedPoTExecutorServer() {}
 func (UnimplementedPoTExecutorServer) testEmbeddedByValue()                     {}
@@ -138,6 +170,42 @@ func _PoTExecutor_VerifyTxs_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PoTExecutor_ExecuteTxs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ExecuteTxRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PoTExecutorServer).ExecuteTxs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PoTExecutor_ExecuteTxs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PoTExecutorServer).ExecuteTxs(ctx, req.(*ExecuteTxRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PoTExecutor_VerifyIncensentive_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(IncensentiveVerifyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PoTExecutorServer).VerifyIncensentive(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PoTExecutor_VerifyIncensentive_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PoTExecutorServer).VerifyIncensentive(ctx, req.(*IncensentiveVerifyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // PoTExecutor_ServiceDesc is the grpc.ServiceDesc for PoTExecutor service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -153,16 +221,28 @@ var PoTExecutor_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "VerifyTxs",
 			Handler:    _PoTExecutor_VerifyTxs_Handler,
 		},
+		{
+			MethodName: "ExecuteTxs",
+			Handler:    _PoTExecutor_ExecuteTxs_Handler,
+		},
+		{
+			MethodName: "VerifyIncensentive",
+			Handler:    _PoTExecutor_VerifyIncensentive_Handler,
+		},
 	},
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "pot.proto",
 }
 
 const (
-	DciExector_SendDci_FullMethodName      = "/pb.DciExector/SendDci"
-	DciExector_GetBalance_FullMethodName   = "/pb.DciExector/GetBalance"
-	DciExector_DevastateDci_FullMethodName = "/pb.DciExector/DevastateDci"
-	DciExector_VerifyUTXO_FullMethodName   = "/pb.DciExector/VerifyUTXO"
+	DciExector_SendDci_FullMethodName                          = "/pb.DciExector/SendDci"
+	DciExector_GetBalance_FullMethodName                       = "/pb.DciExector/GetBalance"
+	DciExector_DevastateDci_FullMethodName                     = "/pb.DciExector/DevastateDci"
+	DciExector_VerifyUTXO_FullMethodName                       = "/pb.DciExector/VerifyUTXO"
+	DciExector_CreateLockTransaction_FullMethodName            = "/pb.DciExector/CreateLockTransaction"
+	DciExector_CreateLockTransferTransaction_FullMethodName    = "/pb.DciExector/CreateLockTransferTransaction"
+	DciExector_CreateDevastateTransaction_FullMethodName       = "/pb.DciExector/CreateDevastateTransaction"
+	DciExector_CreateNonLockTransferTransaction_FullMethodName = "/pb.DciExector/CreateNonLockTransferTransaction"
 )
 
 // DciExectorClient is the client API for DciExector service.
@@ -173,6 +253,10 @@ type DciExectorClient interface {
 	GetBalance(ctx context.Context, in *GetBalanceRequest, opts ...grpc.CallOption) (*GetBalanceResponse, error)
 	DevastateDci(ctx context.Context, in *DevastateDciRequest, opts ...grpc.CallOption) (*DevastateDciResponse, error)
 	VerifyUTXO(ctx context.Context, in *VerifyUTXORequest, opts ...grpc.CallOption) (*VerifyUTXOResponse, error)
+	CreateLockTransaction(ctx context.Context, in *CreateLockTransactionRequest, opts ...grpc.CallOption) (*CreateLockTransactionResponse, error)
+	CreateLockTransferTransaction(ctx context.Context, in *CreateLockTransferTransactionRequest, opts ...grpc.CallOption) (*CreateLockTransferTransactionResponse, error)
+	CreateDevastateTransaction(ctx context.Context, in *CreateDevastateTransactionRequest, opts ...grpc.CallOption) (*CreateDevastateTransactionResponse, error)
+	CreateNonLockTransferTransaction(ctx context.Context, in *CreateNonLockTransferTransactionRequest, opts ...grpc.CallOption) (*CreateNonLockTransferTransactionResponse, error)
 }
 
 type dciExectorClient struct {
@@ -223,6 +307,46 @@ func (c *dciExectorClient) VerifyUTXO(ctx context.Context, in *VerifyUTXORequest
 	return out, nil
 }
 
+func (c *dciExectorClient) CreateLockTransaction(ctx context.Context, in *CreateLockTransactionRequest, opts ...grpc.CallOption) (*CreateLockTransactionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateLockTransactionResponse)
+	err := c.cc.Invoke(ctx, DciExector_CreateLockTransaction_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *dciExectorClient) CreateLockTransferTransaction(ctx context.Context, in *CreateLockTransferTransactionRequest, opts ...grpc.CallOption) (*CreateLockTransferTransactionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateLockTransferTransactionResponse)
+	err := c.cc.Invoke(ctx, DciExector_CreateLockTransferTransaction_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *dciExectorClient) CreateDevastateTransaction(ctx context.Context, in *CreateDevastateTransactionRequest, opts ...grpc.CallOption) (*CreateDevastateTransactionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateDevastateTransactionResponse)
+	err := c.cc.Invoke(ctx, DciExector_CreateDevastateTransaction_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *dciExectorClient) CreateNonLockTransferTransaction(ctx context.Context, in *CreateNonLockTransferTransactionRequest, opts ...grpc.CallOption) (*CreateNonLockTransferTransactionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateNonLockTransferTransactionResponse)
+	err := c.cc.Invoke(ctx, DciExector_CreateNonLockTransferTransaction_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // DciExectorServer is the server API for DciExector service.
 // All implementations must embed UnimplementedDciExectorServer
 // for forward compatibility.
@@ -231,6 +355,10 @@ type DciExectorServer interface {
 	GetBalance(context.Context, *GetBalanceRequest) (*GetBalanceResponse, error)
 	DevastateDci(context.Context, *DevastateDciRequest) (*DevastateDciResponse, error)
 	VerifyUTXO(context.Context, *VerifyUTXORequest) (*VerifyUTXOResponse, error)
+	CreateLockTransaction(context.Context, *CreateLockTransactionRequest) (*CreateLockTransactionResponse, error)
+	CreateLockTransferTransaction(context.Context, *CreateLockTransferTransactionRequest) (*CreateLockTransferTransactionResponse, error)
+	CreateDevastateTransaction(context.Context, *CreateDevastateTransactionRequest) (*CreateDevastateTransactionResponse, error)
+	CreateNonLockTransferTransaction(context.Context, *CreateNonLockTransferTransactionRequest) (*CreateNonLockTransferTransactionResponse, error)
 	mustEmbedUnimplementedDciExectorServer()
 }
 
@@ -252,6 +380,18 @@ func (UnimplementedDciExectorServer) DevastateDci(context.Context, *DevastateDci
 }
 func (UnimplementedDciExectorServer) VerifyUTXO(context.Context, *VerifyUTXORequest) (*VerifyUTXOResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method VerifyUTXO not implemented")
+}
+func (UnimplementedDciExectorServer) CreateLockTransaction(context.Context, *CreateLockTransactionRequest) (*CreateLockTransactionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateLockTransaction not implemented")
+}
+func (UnimplementedDciExectorServer) CreateLockTransferTransaction(context.Context, *CreateLockTransferTransactionRequest) (*CreateLockTransferTransactionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateLockTransferTransaction not implemented")
+}
+func (UnimplementedDciExectorServer) CreateDevastateTransaction(context.Context, *CreateDevastateTransactionRequest) (*CreateDevastateTransactionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateDevastateTransaction not implemented")
+}
+func (UnimplementedDciExectorServer) CreateNonLockTransferTransaction(context.Context, *CreateNonLockTransferTransactionRequest) (*CreateNonLockTransferTransactionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateNonLockTransferTransaction not implemented")
 }
 func (UnimplementedDciExectorServer) mustEmbedUnimplementedDciExectorServer() {}
 func (UnimplementedDciExectorServer) testEmbeddedByValue()                    {}
@@ -346,6 +486,78 @@ func _DciExector_VerifyUTXO_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _DciExector_CreateLockTransaction_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateLockTransactionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DciExectorServer).CreateLockTransaction(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DciExector_CreateLockTransaction_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DciExectorServer).CreateLockTransaction(ctx, req.(*CreateLockTransactionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DciExector_CreateLockTransferTransaction_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateLockTransferTransactionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DciExectorServer).CreateLockTransferTransaction(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DciExector_CreateLockTransferTransaction_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DciExectorServer).CreateLockTransferTransaction(ctx, req.(*CreateLockTransferTransactionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DciExector_CreateDevastateTransaction_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateDevastateTransactionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DciExectorServer).CreateDevastateTransaction(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DciExector_CreateDevastateTransaction_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DciExectorServer).CreateDevastateTransaction(ctx, req.(*CreateDevastateTransactionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DciExector_CreateNonLockTransferTransaction_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateNonLockTransferTransactionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DciExectorServer).CreateNonLockTransferTransaction(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DciExector_CreateNonLockTransferTransaction_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DciExectorServer).CreateNonLockTransferTransaction(ctx, req.(*CreateNonLockTransferTransactionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // DciExector_ServiceDesc is the grpc.ServiceDesc for DciExector service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -368,6 +580,22 @@ var DciExector_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "VerifyUTXO",
 			Handler:    _DciExector_VerifyUTXO_Handler,
+		},
+		{
+			MethodName: "CreateLockTransaction",
+			Handler:    _DciExector_CreateLockTransaction_Handler,
+		},
+		{
+			MethodName: "CreateLockTransferTransaction",
+			Handler:    _DciExector_CreateLockTransferTransaction_Handler,
+		},
+		{
+			MethodName: "CreateDevastateTransaction",
+			Handler:    _DciExector_CreateDevastateTransaction_Handler,
+		},
+		{
+			MethodName: "CreateNonLockTransferTransaction",
+			Handler:    _DciExector_CreateNonLockTransferTransaction_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

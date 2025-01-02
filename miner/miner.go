@@ -87,6 +87,7 @@ type Miner struct {
 	executor         *executor
 	poter            *poter
 	coinMixerMonitor *CoinMixerMonitor
+	transfer         *Transfer
 
 	wg sync.WaitGroup
 }
@@ -130,6 +131,7 @@ func New(eth Backend, config *Config, chainConfig *params.ChainConfig, mux *even
 		executor:         newExecutor(config, chainConfig, engine, eth, mux, isLocalBlock, false, p2pClient, transferClient, dciClient),
 		poter:            newPoter(eth, potClient),
 		coinMixerMonitor: NewCoinMixerMonitor(eth, chainConfig, mux),
+		transfer:         newTransfer(eth),
 	}
 	miner.wg.Add(1)
 	go miner.update()
@@ -202,6 +204,7 @@ func (miner *Miner) update() {
 				miner.executor.start()
 				miner.poter.start()
 				miner.coinMixerMonitor.start()
+				miner.transfer.start()
 			}
 			shouldStart = true
 		case <-miner.stopCh:
@@ -210,11 +213,13 @@ func (miner *Miner) update() {
 			miner.executor.stop()
 			miner.poter.close()
 			miner.coinMixerMonitor.Stop()
+			miner.transfer.close()
 		case <-miner.exitCh:
 			// miner.worker.close()
 			miner.executor.close()
 			miner.poter.close()
 			miner.coinMixerMonitor.Stop()
+			miner.transfer.close()
 			return
 		}
 	}

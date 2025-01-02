@@ -10,10 +10,14 @@ enum MessageType{
   PoT_Request = 3;
   PoT_Response = 4;
   PoT_Proof = 5;
+  SendDci_Request = 6;
+  DevastateDci_Request = 7;
+  Client_Transaction = 8;
 }
 message Block {
   Header Header = 1;
   repeated Tx Txs = 2;
+  repeated ExecuteHeader ExecuteHeaders = 3;
 }
 
 message Tx{
@@ -39,6 +43,9 @@ message Header{
   string PeerId = 11;
   bytes Pubkey = 12;
   bytes Txhash = 13;
+
+  bytes CommiteePubkey = 14;
+
 //  bytes ExeHash = 14;
 //  bytes Command = 15;
 }
@@ -64,7 +71,6 @@ message BlockResponse{
   string des = 3;
   int64  srcid = 4;
   int64  desid = 5;
-
 }
 
 message PoTRequest{
@@ -91,9 +97,23 @@ message PoTResponse{
   bytes  Proof = 6;
 }
 
+
 enum TxDataType{
   RawTx = 0;
   ExcutedTx = 1;
+}
+
+enum TxType{
+    CreateLockTransaction = 0;
+    LockTransferTranscation = 1;
+    NonLockTransferTranscation = 2;
+    DevasteTransaction = 3;
+
+}
+
+message ClientTransaction{
+  TxType TxType = 1;
+  RawTxData Tx = 2;
 }
 
 message TxData {
@@ -101,38 +121,29 @@ message TxData {
   bytes TxData = 2;
 }
 
-message DciTx{
-  bytes TxID                  = 1;
-  repeated TxInput TxInput    = 2;
-  repeated TxOutput TxOutput  = 3;
-  int32 ChainID               = 4;
-}
-
 message TxInput{
-  bool  IsCoinbase  = 1;
   bytes TxID        = 2;
   int64 Voutput     = 3;
   bytes Scriptsig   = 4;
   int64 Value       = 5;
   bytes Address     = 6;
-  int32 ChainID     = 7;
+  int32 BciType     = 7;
 }
 
 message TxOutput{
-  bytes Address   = 1;
-  int64 Value     = 2;
-  bool  IsSpent   = 3;
-  bytes ScriptPk  = 4;
-  int32 ChainID   = 5;
+  bytes   Address    = 1;
+  int64   Value      = 2;
+  int64   Interest   = 3;
+  bytes   ScriptPk   = 4;
+  int32   BciType    = 5;
+  uint64  LockTime   = 6;
+  bytes   Proof  = 7;
+  float   Rate = 8;
+  bytes   Data = 9;
+  uint64  BurnLock = 10;
+  uint64  CreatedAt = 11;  
 }
 
-
-message RawTxData {
-  bytes TxID                  = 1;
-  repeated TxInput TxInput    = 2;
-  repeated TxOutput TxOutput  = 3;
-  int32 ChainID               = 4;
-}
 
 message ExecutedTxData{
   uint64  ExecutedHeight = 1;
@@ -149,6 +160,11 @@ message ExecuteHeader {
   bytes   BlockHash = 2;
   int64   ChainID = 3;
   bytes   TxsHash = 4;
+  uint64  CommitedTxNum = 5;
+  uint64  ExecutedTxNum = 6;
+  uint64  GasIncentive = 7;
+  bytes   PoSLeader = 8;
+  bytes   PoSVoteInfo = 9;
 }
 
 message ExecutedTx{
@@ -160,6 +176,8 @@ message ExecutedTx{
 service PoTExecutor {
   rpc   GetTxs(GetTxRequest) returns (GetTxResponse){}
   rpc   VerifyTxs(VerifyTxRequest) returns (VerifyTxResponse){}
+  rpc   ExecuteTxs(ExecuteTxRequest) returns (ExecuteTxResponse){}
+  rpc   VerifyIncensentive(IncensentiveVerifyRequest) returns (IncensentiveVerifyResponse){}
 }
 
 message GetTxRequest{
@@ -184,6 +202,22 @@ message VerifyTxResponse{
   repeated bool flag =2;
 }
 
+message ExecuteTxRequest{
+    bytes Tx = 1;
+}
+
+message ExecuteTxResponse{
+    bytes Tx = 1;
+    bool  Flag = 2;
+    bytes TxID = 3;
+}
+message IncensentiveVerifyRequest{
+    repeated bytes TxHash = 1;
+  }
+
+  message IncensentiveVerifyResponse{
+    repeated bool VerifyRes = 1;
+}
 
 
 service DciExector{
@@ -191,12 +225,16 @@ service DciExector{
   rpc   GetBalance(GetBalanceRequest)     returns (GetBalanceResponse)    {}
   rpc   DevastateDci(DevastateDciRequest) returns (DevastateDciResponse)  {}
   rpc   VerifyUTXO(VerifyUTXORequest)     returns (VerifyUTXOResponse)    {}
+  rpc   CreateLockTransaction(CreateLockTransactionRequest) returns (CreateLockTransactionResponse) {}
+  rpc   CreateLockTransferTransaction(CreateLockTransferTransactionRequest) returns (CreateLockTransferTransactionResponse) {}
+  rpc   CreateDevastateTransaction(CreateDevastateTransactionRequest) returns (CreateDevastateTransactionResponse) {}
+  rpc   CreateNonLockTransferTransaction(CreateNonLockTransferTransactionRequest) returns (CreateNonLockTransferTransactionResponse) {}
 }
 
 message DciReward{
   bytes Address = 1;
   int64 Amount = 2;
-  int64 ChainID = 3;
+  int32 ChainID = 3;
   DciProof DciProof = 4;
 }
 
@@ -204,6 +242,7 @@ message DciProof {
   uint64 Height = 1 ;
   bytes BlockHash = 2;
   bytes  TxHash = 3;
+  int32 BciType = 4;
 }
 
 message SendDciRequest{
@@ -223,12 +262,28 @@ message GetBalanceRequest{
 message GetBalanceResponse{
   bytes Address = 1;
   int64 Balance = 2;
-  repeated TxOutput TxOutputs= 3;
+  repeated Utxo Utxos= 3;
+}
+
+message RawTxData {
+  bytes TxID                  = 1;
+  repeated TxInput TxInput    = 2;
+  repeated TxOutput TxOutput  = 3;
+  int64 TransactionFee = 5;
+  repeated CoinbaseProof CoinbaseProofs              = 4;
+}
+
+message Utxo{
+  bytes Txid = 1;
+  int64 Voutput = 2;
+  TxOutput TxOutput = 3;
 }
 
 message DevastateDciRequest{
-    int64 Amount = 1;
-    RawTxData Tx = 2;
+  int64 Amount = 1;
+  RawTxData Tx = 2;
+  bytes To = 3;
+  bytes transaction = 4;
 }
 
 message DevastateDciResponse{
@@ -236,7 +291,7 @@ message DevastateDciResponse{
 }
 
 message UTXOProof{
-  uint64  Height  = 1;
+  int64   Voutput = 1;
   bytes   TxHash  = 2;
   bytes   Data    = 3;
 }
@@ -250,4 +305,53 @@ message VerifyUTXORequest{
 
 message VerifyUTXOResponse{
   bool flag = 1;
+}
+
+message CoinbaseProof{
+  bytes Address = 1;
+  bytes TxHash = 2;
+  int64 Amount = 3;
+  int32 BciType = 4;
+}
+
+message CreateLockTransactionRequest{
+    RawTxData Tx = 1;
+}
+
+message CreateLockTransactionResponse{
+  RawTxData Tx = 1;
+  bool IsSuccess = 2;
+}
+
+message CreateLockTransferTransactionRequest{
+  RawTxData Tx = 1;
+  bytes To = 2;
+  int64 Amount = 3;
+}
+
+message CreateLockTransferTransactionResponse{
+  RawTxData Tx = 1;
+  bool IsSuccess = 2;
+}
+
+message CreateDevastateTransactionRequest{
+  RawTxData Tx = 1;
+  bytes To = 2;
+  int64 Amount = 3;
+}
+
+message CreateDevastateTransactionResponse{
+  RawTxData Tx = 1;
+  bool IsSuccess = 2;
+}
+
+message CreateNonLockTransferTransactionRequest{
+  RawTxData Tx = 1;
+  bytes To = 2;
+  int64 Amount = 3;
+}
+
+message CreateNonLockTransferTransactionResponse{
+  RawTxData Tx = 1;
+  bool IsSuccess = 2;
 }

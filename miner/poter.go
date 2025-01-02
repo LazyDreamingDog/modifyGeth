@@ -8,13 +8,16 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/core/txpool"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/proto/pb"
 	"google.golang.org/grpc"
 )
 
 type poter struct {
-	eth   Backend // blockchain and txpool
-	chain *core.BlockChain
+	eth    Backend // blockchain and txpool
+	chain  *core.BlockChain
+	txpool *txpool.TxPool
 
 	// running atomic.Bool // a functional judge
 	serving   atomic.Bool
@@ -28,8 +31,9 @@ type poter struct {
 
 func newPoter(eth Backend, cli pb.PoTExecutorClient) *poter {
 	poter := &poter{
-		eth:   eth,
-		chain: eth.BlockChain(),
+		eth:    eth,
+		chain:  eth.BlockChain(),
+		txpool: eth.TxPool(),
 		// running: atomic.Bool{},
 		serving:   atomic.Bool{},
 		networkId: eth.NetworkId(),
@@ -75,10 +79,9 @@ func (p *poter) close() {
 func (p *poter) GetTxs(ctx context.Context, getTxRq *pb.GetTxRequest) (*pb.GetTxResponse, error) {
 	// get the transaction from the txpool
 	res := &pb.GetTxResponse{
-		Start:   getTxRq.GetStartHeight(),
-		End:     p.eth.BlockChain().CurrentHeader().Number.Uint64(),
-		Blocks:  make([]*pb.ExecuteBlock, 0),
-		Address: p.eth.BlockChain().CurrentHeader().Coinbase.Bytes(),
+		Start:  getTxRq.GetStartHeight(),
+		End:    p.eth.BlockChain().CurrentHeader().Number.Uint64(),
+		Blocks: make([]*pb.ExecuteBlock, 0),
 	}
 
 	var coinbaseValue int64
@@ -86,10 +89,15 @@ func (p *poter) GetTxs(ctx context.Context, getTxRq *pb.GetTxRequest) (*pb.GetTx
 	for i := getTxRq.GetStartHeight(); i <= p.eth.BlockChain().CurrentHeader().Number.Uint64(); i++ {
 		block := p.eth.BlockChain().GetBlockByNumber(i)
 		header := &pb.ExecuteHeader{
-			Height:    block.Header().Number.Uint64(),
-			BlockHash: block.Header().Hash().Bytes(),
-			ChainID:   int64(p.networkId),
-			TxsHash:   block.Header().Root[:],
+			Height:        block.Header().Number.Uint64(),
+			BlockHash:     block.Header().Hash().Bytes(),
+			ChainID:       int64(p.networkId),
+			TxsHash:       block.Header().Root[:],
+			CommitedTxNum: block.Header().CommitTxLength,
+			ExecutedTxNum: uint64(len(block.Transactions())),
+			GasIncentive:  block.Header().Incentive.ToBig().Uint64(),
+			PoSLeader:     block.Header().PoSLeader[:],
+			PoSVoteInfo:   block.Header().PoSVoting,
 		}
 
 		coinbaseValue += block.Header().Incentive.ToBig().Int64()
@@ -109,8 +117,6 @@ func (p *poter) GetTxs(ctx context.Context, getTxRq *pb.GetTxRequest) (*pb.GetTx
 			Txs:    txs,
 		})
 	}
-
-	res.Value = coinbaseValue
 
 	return res, nil
 }
@@ -140,12 +146,36 @@ func (p *poter) VerifyTxs(ctx context.Context, veriRq *pb.VerifyTxRequest) (*pb.
 
 }
 
-// // IncensentiveVerify is a function to verify the incensentive of Each partition
-// func (p *poter) IncensentiveVerify(context.Context, *pb.IncensentiveVerifyRequest) (*pb.IncensentiveVerifyResponse, error) {
-// 	// 传入block Hash 和 txindex ，返回验证结果
-// 	receipts := p.chain.GetReceiptsByHash(common.Hash{})
-// 	if receipts[0].Status == 1 {
-// 		return &pb.IncensentiveVerifyResponse{Flag: true}, nil
-// 	}
-// 	return nil, nil
-// }
+// IncensentiveVerify is a function to verify the incensentive of Each partition
+func (p *poter) IncensentiveVerify(ctx context.Context, veriRq *pb.IncensentiveVerifyRequest) (*pb.IncensentiveVerifyResponse, error) {
+	// 传入block Hash 和 txindex ，返回验证结果
+	res := make([]bool, len(veriRq.TxHash))
+	for index, txHash := range veriRq.TxHash {
+		receipts := p.chain.GetReceiptsByHash(common.Hash(txHash))
+		// TODO : Supplement the event verification logic of each district
+		if receipts[0].Status == 1 {
+			res[index] = true
+		} else {
+			res[index] = false
+		}
+	}
+	return &pb.IncensentiveVerifyResponse{VerifyRes: res}, nil
+}
+
+func (p *poter) ExecuteTxs(ctx context.Context, exeRq *pb.ExecuteTxRequest) (*pb.ExecuteTxResponse, error) {
+	txByte := exeRq.Tx
+	tx := new(types.Transaction)
+	// unmarshal the tx
+	err := tx.UnmarshalBinary(txByte)
+	if err != nil {
+		return &pb.ExecuteTxResponse{Tx: exeRq.Tx, Flag: false, TxID: nil}, err
+	}
+	// add the tx to the txpool
+	txs := []*types.Transaction{tx}
+	errs := p.txpool.Add(txs, true, false)
+	if errs[0] != nil {
+		return &pb.ExecuteTxResponse{Tx: exeRq.Tx, Flag: false, TxID: tx.Hash().Bytes()}, errs[0]
+	}
+
+	return &pb.ExecuteTxResponse{Tx: exeRq.Tx, Flag: true, TxID: tx.Hash().Bytes()}, nil
+}

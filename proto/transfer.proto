@@ -1,16 +1,25 @@
 syntax = "proto3";
 package pb;
+import "common.proto";
+
 option go_package = "./pb";
 
-service TransferGRPC {
-  rpc ToTransferCommit (ToTransferRequest) returns(ToTransferReply) {}
-}
-message ToTransferRequest {
-  bytes FromAddress = 1;
-  bytes BAddress = 2;
-  int32 Amount = 3;
+message CommitChangeTxRequest {
+  bytes TxData = 1;
+  uint64 Amount =2;
+  bytes VerifyHash=3;
 }
 
-message ToTransferReply {
-    bool Result = 1;
+message VerifyWithdrawTxRequest {
+  bytes VerifyHash=1;
 }
+
+message VerifyWithdrawTxReply {
+  bool VerifyRes=1;
+}
+
+service TransferExecutorGRPC {
+  rpc CommitChangeTx (CommitChangeTxRequest) returns(Empty) {}
+  rpc VerifyWithdrawTx (VerifyWithdrawTxRequest) returns(VerifyWithdrawTxReply) {}
+}
+

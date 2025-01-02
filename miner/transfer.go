@@ -1,1 +1,118 @@
 package miner
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"math/big"
+	"net"
+	"sync"
+	"sync/atomic"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/core/txpool"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/proto/pb"
+	"google.golang.org/grpc"
+)
+
+type Transfer struct {
+	eth    Backend // blockchain and txpool
+	chain  *core.BlockChain
+	txpool *txpool.TxPool
+
+	// running atomic.Bool // a functional judge
+	serving atomic.Bool
+	wg      sync.WaitGroup // for go-routine
+
+	txChannel chan *types.Transaction
+	exitCh    chan struct{}
+
+	server                                     *grpc.Server // server pointer to the running server
+	pb.UnimplementedTransferExecutorGRPCServer              // indicated transfer can be a grpc server
+}
+
+func newTransfer(eth Backend) *Transfer {
+	transfer := &Transfer{
+		eth:       eth,
+		chain:     eth.BlockChain(),
+		txpool:    eth.TxPool(),
+		txChannel: make(chan *types.Transaction),
+		exitCh:    make(chan struct{}),
+	}
+
+	// 注册server
+	s := grpc.NewServer()
+	pb.RegisterTransferExecutorGRPCServer(s, transfer)
+	transfer.server = s // then we can handle the server
+
+	transfer.serving.Store(false)
+	transfer.wg.Add(1)
+	go transfer.loop()
+
+	return transfer
+}
+
+func (t *Transfer) start() {
+	if !t.serving.Load() {
+		listen, err := net.Listen("tcp", "127.0.0.1:9809") // will be included in config
+		if err != nil {
+			fmt.Println(err)
+			panic("cannot listen!")
+		}
+		t.serving.Store(true)
+		go t.server.Serve(listen)
+	}
+}
+
+func (t *Transfer) close() {
+	t.server.Stop()
+	t.serving.Store(false)
+	close(t.exitCh)
+	t.wg.Wait()
+}
+
+// 循环接受转账过来的交易，一旦有就add到Txpool里
+func (t *Transfer) loop() {
+	defer t.wg.Done()
+	for {
+		select {
+		case tx := <-t.txChannel:
+			t.txpool.Add([]*types.Transaction{tx}, true, false)
+		case <-t.exitCh:
+			return
+		}
+	}
+}
+
+// Receive txs from utxo layer
+func (t *Transfer) CommitWithdrawTx(ctx context.Context, request *pb.CommitWithdrawTxRequest) (*pb.Empty, error) {
+	// 构造一个from是空的系统交易
+
+	// 将交易插入到txpool
+
+	// 返回空
+	return &pb.Empty{}, nil
+}
+
+// 验证交易
+func (t *Transfer) VerifyChangeTx(ctx context.Context, request *pb.VerifyChangeTxRequest) (*pb.VerifyChangeTxReply, error) {
+	// 验证交易
+	// 读取txhash和value
+	txhash := request.VerifyHash
+	value := request.Value
+	// TODO: 需要验证重放攻击
+	// 读取账户的提现的最新高度，判断验证交易的区块高度是否落后
+	// 从blockchain中读取交易进行比对
+	blockchain := t.chain
+	_, tx, err := blockchain.GetTransactionLookup(common.Hash(txhash))
+	if err != nil {
+		return &pb.VerifyChangeTxReply{VerifyRes: false}, errors.New("tx not found")
+	}
+	if tx.Value().Cmp(big.NewInt(int64(value))) != 0 {
+		return &pb.VerifyChangeTxReply{VerifyRes: false}, errors.New("value not match")
+	}
+	// 返回验证结果
+	return &pb.VerifyChangeTxReply{VerifyRes: true}, nil
+}

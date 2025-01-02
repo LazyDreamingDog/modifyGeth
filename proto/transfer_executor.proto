@@ -1,15 +1,27 @@
 syntax = "proto3";
 package pb;
+import "common.proto";
+
 option go_package = "./pb";
 
-service TransferExecutorGRPC {
-  rpc TransferTx (TxData) returns(Reply) {}
-  rpc VerifyTx (TxData) returns(Reply) {}
-}
-message TxData {
-  bytes data = 1;
+message CommitWithdrawTxRequest {
+  bytes To = 1;
+  uint64 Value = 2;
+  bytes VerifyHash = 3;
+  uint64 Height = 4;
 }
 
-message Reply {
-  bool Result = 1;
+message VerifyChangeTxRequest {
+  uint64 Value = 1;
+  bytes VerifyHash = 2;
 }
+
+message VerifyChangeTxReply {
+  bool VerifyRes=1;
+}
+
+service TransferExecutorGRPC {
+  rpc CommitWithdrawTx (CommitWithdrawTxRequest) returns(Empty) {}
+  rpc VerifyChangeTx (VerifyChangeTxRequest) returns(VerifyChangeTxReply) {}
+}
+
