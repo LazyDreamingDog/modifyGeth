@@ -212,6 +212,8 @@ func (tx *Transaction) decodeTyped(b []byte) (TxData, error) {
 		inner = new(PowTx)
 	case DynamicCryptoTxType:
 		inner = new(DynamicCryptoTx)
+	case SystemTxType:
+		inner = new(SystemTx)
 	default:
 		return nil, ErrTxTypeNotSupported
 	}
@@ -602,28 +604,35 @@ func (tx *Transaction) HashNonce() uint64 {
 
 func (tx *Transaction) SignatureData() []byte {
 	if dynamicCryptoTx, ok := tx.inner.(*DynamicCryptoTx); ok {
-		return dynamicCryptoTx.SignatureData
+		return dynamicCryptoTx.signatureData()
 	}
 	return []byte{}
 }
 
 func (tx *Transaction) CryptoType() []byte {
 	if dynamicCryptoTx, ok := tx.inner.(*DynamicCryptoTx); ok {
-		return dynamicCryptoTx.CryptoType
+		return dynamicCryptoTx.cryptoType()
 	}
 	return []byte{}
 }
 
 func (tx *Transaction) PublicKey() []byte {
 	if dynamicCryptoTx, ok := tx.inner.(*DynamicCryptoTx); ok {
-		return dynamicCryptoTx.PublicKey
+		return dynamicCryptoTx.publicKey()
 	}
 	return []byte{}
 }
 
 func (tx *Transaction) PublicKeyIndex() uint64 {
 	if dynamicCryptoTx, ok := tx.inner.(*DynamicCryptoTx); ok {
-		return dynamicCryptoTx.PublicKeyIndex
+		return dynamicCryptoTx.publicKeyIndex()
+	}
+	return 0
+}
+
+func (tx *Transaction) SystemFlag() uint64 {
+	if systemTx, ok := tx.inner.(*SystemTx); ok {
+		return systemTx.systemFlag()
 	}
 	return 0
 }

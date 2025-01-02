@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"io"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -90,7 +91,7 @@ func (tx *DynamicCryptoTx) nonce() uint64          { return tx.Nonce }
 func (tx *DynamicCryptoTx) to() *common.Address    { return tx.To }
 func (tx *DynamicCryptoTx) cryptoType() []byte     { return tx.CryptoType }
 func (tx *DynamicCryptoTx) signatureData() []byte  { return tx.SignatureData }
-func (tx *DynamicCryptoTx) publicIndex() uint64    { return tx.PublicKeyIndex }
+func (tx *DynamicCryptoTx) publicKeyIndex() uint64 { return tx.PublicKeyIndex }
 func (tx *DynamicCryptoTx) publicKey() []byte      { return tx.PublicKey }
 
 func (tx *DynamicCryptoTx) effectiveGasPrice(dst *big.Int, baseFee *big.Int) *big.Int {
@@ -112,6 +113,69 @@ func (tx *DynamicCryptoTx) setSignatureValues(chainID, v, r, s *big.Int) {
 	tx.ChainID, tx.V, tx.R, tx.S = chainID, v, r, s
 }
 
+// dynamicCryptoTxData 用于序列化/反序列化的数据结构
+type dynamicCryptoTxData struct {
+	AccountNonce   uint64
+	Price          *big.Int
+	GasLimit       uint64
+	Recipient      *common.Address
+	Amount         *big.Int
+	Payload        []byte
+	V              *big.Int
+	R              *big.Int
+	S              *big.Int
+	ChainID        *big.Int
+	CryptoType     []byte
+	SignatureData  []byte
+	PublicKeyIndex uint64
+	PublicKey      []byte
+}
+
+// EncodeRLP implements rlp.Encoder
+func (tx *DynamicCryptoTx) EncodeRLP(w io.Writer) error {
+	enc := &dynamicCryptoTxData{
+		AccountNonce:   tx.Nonce,
+		Price:          tx.GasTipCap,
+		GasLimit:       tx.Gas,
+		Recipient:      tx.To,
+		Amount:         tx.Value,
+		Payload:        tx.Data,
+		V:              tx.V,
+		R:              tx.R,
+		S:              tx.S,
+		ChainID:        tx.ChainID,
+		CryptoType:     tx.CryptoType,
+		SignatureData:  tx.SignatureData,
+		PublicKeyIndex: tx.PublicKeyIndex,
+		PublicKey:      tx.PublicKey,
+	}
+	return rlp.Encode(w, enc)
+}
+
+// DecodeRLP implements rlp.Decoder
+func (tx *DynamicCryptoTx) DecodeRLP(s *rlp.Stream) error {
+	var dec dynamicCryptoTxData
+	if err := s.Decode(&dec); err != nil {
+		return err
+	}
+	tx.Nonce = dec.AccountNonce
+	tx.GasTipCap = dec.Price
+	tx.Gas = dec.GasLimit
+	tx.To = dec.Recipient
+	tx.Value = dec.Amount
+	tx.Data = dec.Payload
+	tx.V = dec.V
+	tx.R = dec.R
+	tx.S = dec.S
+	tx.ChainID = dec.ChainID
+	tx.CryptoType = dec.CryptoType
+	tx.SignatureData = dec.SignatureData
+	tx.PublicKeyIndex = dec.PublicKeyIndex
+	tx.PublicKey = dec.PublicKey
+	return nil
+}
+
+// 补全RLP编码
 func (tx *DynamicCryptoTx) encode(b *bytes.Buffer) error {
 	return rlp.Encode(b, tx)
 }

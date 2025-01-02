@@ -13,6 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/txpool"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/proto/pb"
 	"google.golang.org/grpc"
 )
@@ -79,6 +80,7 @@ func (t *Transfer) loop() {
 	for {
 		select {
 		case tx := <-t.txChannel:
+			log.Info("get tx", "tx", tx.Hash())
 			t.txpool.Add([]*types.Transaction{tx}, true, false)
 		case <-t.exitCh:
 			return
@@ -89,8 +91,13 @@ func (t *Transfer) loop() {
 // Receive txs from utxo layer
 func (t *Transfer) CommitWithdrawTx(ctx context.Context, request *pb.CommitWithdrawTxRequest) (*pb.Empty, error) {
 	// 构造一个from是空的系统交易
-
+	toAddress := common.BytesToAddress(request.To)
+	value := new(big.Int).SetUint64(request.Value)
+	// 构造交易数据0x0D06
+	data := []byte{0x0D, 0x06}
+	systemTx := types.NewSystemTx(t.chain.Config().ChainID, 0, big.NewInt(0), big.NewInt(0), 0, &toAddress, value, data, 0)
 	// 将交易插入到txpool
+	t.txChannel <- systemTx
 
 	// 返回空
 	return &pb.Empty{}, nil

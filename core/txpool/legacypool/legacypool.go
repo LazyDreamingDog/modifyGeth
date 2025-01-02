@@ -276,7 +276,7 @@ func New(config Config, chain BlockChain) *LegacyPool {
 // pool, specifically, whether it is a Legacy, AccessList or Dynamic transaction.
 func (pool *LegacyPool) Filter(tx *types.Transaction) bool {
 	switch tx.Type() {
-	case types.LegacyTxType, types.AccessListTxType, types.DynamicFeeTxType, types.PowTxType, types.DynamicCryptoTxType:
+	case types.LegacyTxType, types.AccessListTxType, types.DynamicFeeTxType, types.PowTxType, types.DynamicCryptoTxType, types.SystemTxType:
 		return true
 	default:
 		return false
@@ -594,9 +594,13 @@ func (pool *LegacyPool) validateTxBasics(tx *types.Transaction, local bool) erro
 			1<<types.AccessListTxType |
 			1<<types.DynamicFeeTxType |
 			1<<types.PowTxType |
-			1<<types.DynamicCryptoTxType,
+			1<<types.DynamicCryptoTxType |
+			1<<types.SystemTxType,
 		MaxSize: txMaxSize,
 		MinTip:  pool.gasTip.Load(),
+	}
+	if tx.Type() == types.SystemTxType {
+		return nil
 	}
 	if local {
 		opts.MinTip = new(big.Int)
@@ -610,6 +614,11 @@ func (pool *LegacyPool) validateTxBasics(tx *types.Transaction, local bool) erro
 // validateTx checks whether a transaction is valid according to the consensus
 // rules and adheres to some heuristic limits of the local node (price and size).
 func (pool *LegacyPool) validateTx(tx *types.Transaction, local bool) error {
+	// skip system tx
+	if tx.Type() == types.SystemTxType {
+		return nil
+	}
+
 	opts := &txpool.ValidationOptionsWithState{
 		State: pool.currentState,
 
