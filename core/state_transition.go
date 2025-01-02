@@ -335,7 +335,7 @@ func (st *StateTransition) buyGas() error {
 		insufficient := st.state.UseInterest(st.msg.From, balanceCheckU256)
 		if insufficient != nil {
 			// Only using native token to pay insufficient part
-			fmt.Println("Using interest to pay gas, insufficient amount is:", insufficient)
+			fmt.Println("Using interest to pay part of gas. The remaining gas to be paid is:", insufficient)
 			if have, want := st.state.GetBalance(st.msg.From), insufficient; have.Cmp(want) < 0 {
 				return fmt.Errorf("%w: address %v have %v want %v", ErrInsufficientFunds, st.msg.From.Hex(), have, want)
 			}

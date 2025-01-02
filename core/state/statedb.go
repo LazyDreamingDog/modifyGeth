@@ -141,7 +141,8 @@ type StateDB struct {
 	onCommit func(states *triestate.Set) // Hook invoked when commit is performed
 
 	// Interest rate, 0-100
-	interestRate int64
+	interestRate         uint64
+	transferInterestRate uint64
 }
 
 // New creates a new state from a given trie.
@@ -293,6 +294,15 @@ func (s *StateDB) GetBalance(addr common.Address) *uint256.Int {
 	return common.U2560
 }
 
+// GetInterest retrieve the interest from the given address or 0 if object not found
+func (s *StateDB) GetInterest(addr common.Address) *uint256.Int {
+	stateObject := s.getStateObject(addr)
+	if stateObject != nil {
+		return stateObject.Interest()
+	}
+	return uint256.NewInt(0)
+}
+
 // GetNonce retrieves the nonce from the given address or 0 if object not found
 func (s *StateDB) GetNonce(addr common.Address) uint64 {
 	stateObject := s.getStateObject(addr)
@@ -397,6 +407,20 @@ func (s *StateDB) SetBalance(addr common.Address, amount *uint256.Int) {
 	stateObject := s.getOrNewStateObject(addr)
 	if stateObject != nil {
 		stateObject.SetBalance(amount)
+	}
+}
+
+func (s *StateDB) AddInterest(addr common.Address, amount *uint256.Int) {
+	stateObject := s.getOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.AddInterest(amount)
+	}
+}
+
+func (s *StateDB) SubInterest(addr common.Address, amount *uint256.Int) {
+	stateObject := s.getOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.SubInterest(amount)
 	}
 }
 
@@ -1435,14 +1459,26 @@ func (s *StateDB) SetSecurityLevel(addr common.Address, level uint64) {
 }
 
 // * Methods are used to interest compute
-func (s *StateDB) SetInterestRate(rate int64) error {
-	if rate < 0 || rate > 100 {
-		return fmt.Errorf("interest rate: %v is illegal", rate)
+func (s *StateDB) SetInterestRate(rate uint64) {
+	if rate > 100 {
+		// rate is bigger than 100%
+		fmt.Printf("interest rate: %v is illegal\n", rate)
 	} else {
 		s.interestRate = rate
-		return nil
 	}
 }
+
+func (s *StateDB) SetTransferInterestRate(rate uint64) {
+	if rate > 100 {
+		// rate is bigger than 100%
+		fmt.Printf("interest rate: %v is illegal\n", rate)
+	} else {
+		s.transferInterestRate = rate
+	}
+}
+
+func (s *StateDB) GetInterestRate() uint64         { return s.interestRate }
+func (s *StateDB) GetTransferInterestRate() uint64 { return s.transferInterestRate }
 
 // Return the old block number(interest edit), and record the current number
 func (s *StateDB) ComputeInterest(addr common.Address, currentNumber *big.Int) {
@@ -1461,7 +1497,7 @@ func (s *StateDB) ComputeInterest(addr common.Address, currentNumber *big.Int) {
 	// Compute interest=(currentNumber - lastNumber) * rate * balance
 	interest := big.NewInt(1)
 	interest.Sub(currentNumber, obj.data.LastBlockNumber)
-	interest.Mul(interest, big.NewInt(s.interestRate))
+	interest.Mul(interest, big.NewInt(0).SetUint64(s.interestRate))
 
 	interest_u256 := uint256.NewInt(0)
 	interest_u256.SetFromBig(interest)
@@ -1475,7 +1511,6 @@ func (s *StateDB) ComputeInterest(addr common.Address, currentNumber *big.Int) {
 	// Change account state
 	obj.data.Interest.Add(interest_u256, obj.data.Interest)
 	obj.data.LastBlockNumber.Set(currentNumber)
-	fmt.Printf("Add %v(expand 100 times) interest to address:%s. Last edit interest block number: %v, current Number: %v\n", interest_u256, addr, obj.data.LastBlockNumber, currentNumber)
 }
 
 // Use interest to pay gas, if insufficient return the insufficient amount

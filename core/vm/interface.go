@@ -34,6 +34,17 @@ type StateDB interface {
 	AddBalance(common.Address, *uint256.Int)
 	GetBalance(common.Address) *uint256.Int
 
+	// Interest relevant
+	SubInterest(common.Address, *uint256.Int)
+	AddInterest(common.Address, *uint256.Int)
+	GetInterest(common.Address) *uint256.Int
+	UseInterest(addr common.Address, usedInterest *uint256.Int) *uint256.Int
+
+	SetInterestRate(uint64)
+	SetTransferInterestRate(uint64)
+	GetInterestRate() uint64
+	GetTransferInterestRate() uint64
+
 	GetNonce(common.Address) uint64
 	SetNonce(common.Address, uint64)
 
@@ -83,8 +94,6 @@ type StateDB interface {
 
 	AddLog(*types.Log)
 	AddPreimage(common.Hash, []byte)
-
-	UseInterest(addr common.Address, usedInterest *uint256.Int) *uint256.Int
 }
 
 // CallContext provides a basic interface for the EVM calling conventions. The EVM
