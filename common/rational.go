@@ -10,9 +10,6 @@ type Rational struct {
 	Denominator uint64
 }
 
-// 定义一个固定的精度调整阈值
-const precisionThreshold = uint64(1 << 32) // 使用2^32作为阈值
-
 // adjustPrecision reduces the fraction in a deterministic way
 func adjustPrecision(num, den *big.Int) (uint64, uint64) {
 	// 持续检查并调整直到低于阈值
@@ -33,15 +30,6 @@ func adjustPrecision(num, den *big.Int) (uint64, uint64) {
 func NewRational(num, den uint64) *Rational {
 	if den == 0 {
 		den = 1
-	}
-
-	// 持续检查并调整直到低于阈值
-	for num > precisionThreshold || den > precisionThreshold {
-		num >>= 1
-		den >>= 1
-		if den == 0 {
-			den = 1
-		}
 	}
 
 	// 转换为big.Int进行GCD计算
@@ -68,13 +56,6 @@ func (r *Rational) Mul(other *Rational) *Rational {
 
 // Add adds two rationals with deterministic precision adjustment
 func (r *Rational) Add(other *Rational) *Rational {
-	// 如果任一输入超过阈值，先调整
-	if r.Numerator > precisionThreshold || r.Denominator > precisionThreshold ||
-		other.Numerator > precisionThreshold || other.Denominator > precisionThreshold {
-		return NewRational(r.Numerator>>1, r.Denominator>>1).Add(
-			NewRational(other.Numerator>>1, other.Denominator>>1))
-	}
-
 	num1 := new(big.Int).SetUint64(r.Numerator)
 	den1 := new(big.Int).SetUint64(r.Denominator)
 	num2 := new(big.Int).SetUint64(other.Numerator)
@@ -171,7 +152,14 @@ func FromBigInt(b *big.Int) *Rational {
 	if b.Sign() < 0 {
 		panic("Rational does not support negative numbers")
 	}
-	return NewRational(b.Uint64(), 1)
+
+	// Convert to fraction form
+	num := new(big.Int).Set(b)
+	den := new(big.Int).SetUint64(1)
+
+	// Adjust precision if needed
+	n, d := adjustPrecision(num, den)
+	return NewRational(n, d)
 }
 
 // ToBigFloat converts Rational to *big.Float for higher precision calculations
