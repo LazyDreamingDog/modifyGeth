@@ -18,6 +18,11 @@ import (
 	"google.golang.org/grpc"
 )
 
+type txReq struct {
+	verifyHash []byte
+	tx         *types.Transaction
+}
+
 type Transfer struct {
 	eth    Backend // blockchain and txpool
 	chain  *core.BlockChain
@@ -27,7 +32,7 @@ type Transfer struct {
 	serving atomic.Bool
 	wg      sync.WaitGroup // for go-routine
 
-	txChannel chan *types.Transaction
+	txChannel chan *txReq
 	exitCh    chan struct{}
 
 	server                                     *grpc.Server // server pointer to the running server
@@ -39,7 +44,7 @@ func newTransfer(eth Backend) *Transfer {
 		eth:       eth,
 		chain:     eth.BlockChain(),
 		txpool:    eth.TxPool(),
-		txChannel: make(chan *types.Transaction),
+		txChannel: make(chan *txReq),
 		exitCh:    make(chan struct{}),
 	}
 
@@ -79,9 +84,11 @@ func (t *Transfer) loop() {
 	defer t.wg.Done()
 	for {
 		select {
-		case tx := <-t.txChannel:
-			log.Info("get tx", "tx", tx.Hash())
-			t.txpool.Add([]*types.Transaction{tx}, true, false)
+		case txreq := <-t.txChannel:
+			log.Info("get tx", "tx", txreq.tx.Hash())
+			// todo: 需要验证txreq.verifyHash
+			// 调用转账接口进行验证
+			t.txpool.Add([]*types.Transaction{txreq.tx}, true, false)
 		case <-t.exitCh:
 			return
 		}
@@ -90,14 +97,27 @@ func (t *Transfer) loop() {
 
 // Receive txs from utxo layer
 func (t *Transfer) CommitWithdrawTx(ctx context.Context, request *pb.CommitWithdrawTxRequest) (*pb.Empty, error) {
-	// 构造一个from是空的系统交易
-	toAddress := common.BytesToAddress(request.To)
-	value := new(big.Int).SetUint64(request.Value)
-	// 构造交易数据0x0D06
-	data := []byte{0x0D, 0x06}
-	systemTx := types.NewSystemTx(t.chain.Config().ChainID, 0, big.NewInt(0), big.NewInt(0), 0, &toAddress, value, data, 0)
+	// // 方案一：构造一个from是空的系统交易
+	// toAddress := common.BytesToAddress(request.To)
+	// value := new(big.Int).SetUint64(request.Value)
+	// // 构造交易数据0x0D06
+	// data := []byte{0x0D, 0x06}
+	// // data后面附带验证的哈希
+	// verifyHash := request.VerifyHash
+	// data = append(data, verifyHash...)
+	// systemTx := types.NewSystemTx(t.chain.Config().ChainID, 0, big.NewInt(0), big.NewInt(0), 0, &toAddress, value, data, 0)
+
+	// 方案二：反序列化交易
+	gettx := new(types.Transaction)
+	err := gettx.UnmarshalBinary(request.TxData)
+	if err != nil {
+		return nil, err
+	}
 	// 将交易插入到txpool
-	t.txChannel <- systemTx
+	t.txChannel <- &txReq{
+		verifyHash: request.VerifyHash,
+		tx:         gettx,
+	}
 
 	// 返回空
 	return &pb.Empty{}, nil

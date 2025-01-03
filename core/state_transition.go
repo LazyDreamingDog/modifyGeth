@@ -160,6 +160,7 @@ type Message struct {
 	SignatureData  []byte
 	PublicKey      []byte
 	PublicKeyIndex uint64
+	SystemFlag     uint64
 
 	// if isPow is true, the message is a PoW transaction
 	// TODO: check whether it can use pow as gas.
@@ -195,6 +196,22 @@ func (m *Message) ParseVoucher() {
 
 // TransactionToMessage converts a transaction into a Message.
 func TransactionToMessage(tx *types.Transaction, s types.Signer, baseFee *big.Int) (*Message, error) {
+	if tx.Type() == types.SystemTxType {
+		systemMsg := &Message{
+			GasLimit:          tx.Gas(),
+			GasPrice:          new(big.Int).Set(tx.GasPrice()),
+			GasFeeCap:         new(big.Int).Set(tx.GasFeeCap()),
+			GasTipCap:         new(big.Int).Set(tx.GasTipCap()),
+			From:              common.HexToAddress("0x0000000000000000000000000000000000000000"),
+			To:                tx.To(),
+			Value:             tx.Value(),
+			Data:              tx.Data(),
+			SystemFlag:        tx.SystemFlag(),
+			SkipAccountChecks: true,
+		}
+		return systemMsg, nil
+	}
+
 	msg := &Message{
 		Nonce:             tx.Nonce(),
 		GasLimit:          tx.Gas(),
@@ -379,6 +396,11 @@ func (st *StateTransition) preCheck() error {
 		}
 	}
 
+	// System flag is 1, skip all the checks
+	if msg.SystemFlag == 1 {
+		return nil
+	}
+
 	if !msg.SkipAccountChecks {
 		// Make sure this transaction's nonce is correct.
 		stNonce := st.state.GetNonce(msg.From)
@@ -495,10 +517,32 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 	// 	}, nil
 	// }
 
+	if num := isSystemTx(st.msg); num > 0 {
+		log.Info("System transaction", "from", st.msg.From.Hex(), "to", st.msg.To.Hex(), "value", st.msg.Value)
+		switch num {
+		case 1:
+			log.Info("System transaction", "num=1,do nothing")
+		case 2:
+			// data= 0x0D06,表示是由转账区过来的提现交易
+			log.Info("System transaction", "num=2", "data", st.msg.Data)
+			st.state.AddBalance(*st.msg.To, uint256.MustFromBig(st.msg.Value))
+		default:
+			log.Info("System transaction", "num", num)
+		}
+		return &ExecutionResult{
+			UsedGas:     0,
+			RefundedGas: 0,
+			Err:         nil,
+			ReturnData:  nil,
+		}, nil
+	}
+
 	// Check is done in the upper layer, here just add balance
 	if isTokenTransition(st.msg) {
-		log.Info("Token transition transaction", "to", st.msg.To.Hex(), "value", st.msg.Value)
-		st.state.AddBalance(*st.msg.To, uint256.MustFromBig(st.msg.Value))
+		log.Info("Token transition transaction", "to", st.msg.To.Hex())
+		// 截取data解析value
+		value := st.msg.Data[2:]
+		st.state.AddBalance(*st.msg.To, uint256.MustFromBig(new(big.Int).SetBytes(value)))
 		return &ExecutionResult{
 			UsedGas:     st.gasUsed(),
 			RefundedGas: 0,
@@ -769,4 +813,14 @@ func isCoinMixerAddBalanceTx(msg *Message) bool {
 		return true
 	}
 	return false
+}
+
+func isSystemTx(msg *Message) int {
+	if msg.SystemFlag == 1 && msg.SkipAccountChecks {
+		if msg.Data[0] == 0x0D && msg.Data[1] == 0x06 {
+			return 2
+		}
+		return 1
+	}
+	return 0
 }

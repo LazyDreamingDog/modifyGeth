@@ -19,6 +19,7 @@ package legacypool
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"math/big"
 	"sort"
@@ -1752,6 +1753,8 @@ func (as *accountSet) add(addr common.Address) {
 func (as *accountSet) addTx(tx *types.Transaction) {
 	if addr, err := types.Sender(as.signer, tx); err == nil {
 		as.add(addr)
+	} else {
+		fmt.Println("addTx err", err)
 	}
 }
 

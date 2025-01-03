@@ -5,10 +5,11 @@ import "common.proto";
 option go_package = "./pb";
 
 message CommitWithdrawTxRequest {
-  bytes To = 1;
-  uint64 Value = 2;
-  bytes VerifyHash = 3;
-  uint64 Height = 4;
+  bytes TxData=1;
+  bytes To = 2;
+  uint64 Value = 3;
+  bytes VerifyHash = 4;
+  uint64 Height = 5;
 }
 
 message VerifyChangeTxRequest {

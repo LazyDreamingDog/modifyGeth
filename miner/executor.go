@@ -689,7 +689,7 @@ func (e *executor) sendLoop() {
 	for {
 		select {
 		case req := <-e.newWorkCh:
-			// fmt.Println("sendLoop get a newWorkCh and start send tx")
+			fmt.Println("sendLoop get a newWorkCh and start send tx")
 			e.sendNewTxBatch(req.interrupt, req.timestamp)
 		case <-e.exitCh:
 			return
@@ -737,13 +737,17 @@ func (e *executor) fillTransactions(interrupt *atomic.Int32, env *executor_env) 
 	}
 	// TODO: for test
 	if len(localTxs) == 0 {
-		// fmt.Println("no txs")
+		fmt.Println("no txs")
 		return nil
+	} else {
+		fmt.Println("have txs,", len(localTxs))
 	}
 	// Fill the block with all available pending transactions.
 	if len(localTxs) > 0 {
 		txs := newTransactionsByPriceAndNonce(env.signer, localTxs, env.header.BaseFee)
+		fmt.Println("txs", txs)
 		if err := e.sendTransactions(env, txs, interrupt); err != nil {
+			fmt.Println("sendTransactions err", err)
 			return err
 		}
 	}
@@ -761,7 +765,7 @@ func (e *executor) sendTransactions(env *executor_env, txs *transactionsByPriceA
 	if env.gasPool == nil {
 		env.gasPool = new(core.GasPool).AddGas(gasLimit)
 	}
-
+	fmt.Println("txslen", len(txs.txs))
 	for {
 		// Check interruption signal and abort building if it's fired.
 		if interrupt != nil {
@@ -776,9 +780,11 @@ func (e *executor) sendTransactions(env *executor_env, txs *transactionsByPriceA
 		}
 		// Retrieve the next transaction and abort if all done.
 		ltx := txs.Peek()
+		fmt.Println("ltx", ltx)
 		if ltx == nil {
 			break
 		}
+		fmt.Println("ltx.Tx.Type()", ltx.Tx.Type())
 		// If we don't have enough space for the next transaction, skip the account.
 		if env.gasPool.Gas() < ltx.Gas {
 			log.Trace("Not enough gas left for transaction", "hash", ltx.Hash, "left", env.gasPool.Gas(), "needed", ltx.Gas)
@@ -802,7 +808,8 @@ func (e *executor) sendTransactions(env *executor_env, txs *transactionsByPriceA
 
 		// sendTx to consensus
 		_, err := e.execClient.sendTx(tx, e.networkId)
-		// fmt.Println("to", tx.To(), "value", tx.Value(), "nonce", tx.Nonce())
+		fmt.Println("to", tx.To(), "value", tx.Value(), "nonce", tx.Nonce())
+		fmt.Println("tx.Type()", tx.Type(), "err", err)
 		if err != nil {
 			log.Trace("Failed to send transaction", "hash", ltx.Hash, "err", err)
 			txs.Pop()
@@ -902,6 +909,14 @@ func (e *executor) executeTransactions(env *executor_env, txs types.Transactions
 	log.Info("start execute transactions", "receive init txs len:", txs.Len())
 	env.initTxcount = txs.Len()
 	for _, tx := range txs {
+		if isCorrectFromTransferTx(tx) {
+			log.Info("Correct from transfer transaction", "hash", tx.Hash())
+		} else {
+			// 扔掉这个交易
+			log.Info("Incorrect from transfer transaction", "hash", tx.Hash())
+			continue
+		}
+
 		// If we don't have enough gas for any further transactions then we're done.
 		if env.gasPool.Gas() < params.TxGas {
 			log.Trace("Not enough gas for further transactions", "have", env.gasPool, "want", params.TxGas)
@@ -959,12 +974,13 @@ func (e *executor) executeTransactions(env *executor_env, txs types.Transactions
 // 看看交易行成功没有，如果成功把它收集进Env里
 func (e *executor) executeTransaction(env *executor_env, tx *types.Transaction) ([]*types.Log, error) {
 	// TODO : send to transfer
-	if tx.Data() == nil {
+	if isToTransferTransaction(tx) {
 		from, err := types.Sender(env.signer, tx)
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 		e.execClient.transferClient.ToTransferCommit(context.Background(), &pb.ToTransferRequest{FromAddress: from.Bytes(), BAddress: tx.To().Bytes(), Amount: int32(tx.Value().Int64())})
+		// 这里依然要执行，然后产生链上记录给转账区进行查询验证。
 	}
 
 	// 检查交易是否是代币转换并调用dciClient校验函数
@@ -1086,6 +1102,29 @@ func isTokenTransition(tx *types.Transaction) bool {
 	}
 
 	if tx.Data()[0] == 0x0D && tx.Data()[1] == 0x02 {
+		return true
+	}
+	return false
+}
+
+func isToTransferTransaction(tx *types.Transaction) bool {
+	if tx.Data() == nil || len(tx.Data()) < 3 {
+		return false
+	}
+
+	if tx.Data()[0] == 0x0D && tx.Data()[1] == 0x07 {
+		return true
+	}
+	return false
+}
+
+func isCorrectFromTransferTx(tx *types.Transaction) bool {
+	if tx.Type() == types.SystemTxType && tx.Data()[0] == 0x0D && tx.Data()[1] == 0x06 {
+		// 读取tx.Data()[2:]作为verifyHash
+		verifyHash := tx.Data()[2:]
+		fmt.Println("verifyHash", verifyHash)
+		// 调用转账接口进行验证
+		// e.execClient.verifyTransferTx(verifyHash)
 		return true
 	}
 	return false

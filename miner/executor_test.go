@@ -228,12 +228,12 @@ func TestExecutor(t *testing.T) {
 
 	// Start mining!
 	e.start()
-	fmt.Println("111111")
+	fmt.Println("11111111111")
 	for i := 0; i < 3; i++ {
 		// fmt.Println("add tx")
 		// testtx := b.newRandomTx(false)
-		// testtx := b.newTx(uint64(i))
-		testtx := b.newContractTx(uint64(i))
+		testtx := b.newTx(uint64(i))
+		// testtx := b.newContractTx(uint64(i))
 		errs := b.txPool.Add([]*types.Transaction{testtx}, true, false)
 		fmt.Println("errs", errs)
 		// b.txPool.Add([]*types.Transaction{b.newRandomTx(false)}, true, false)
@@ -275,4 +275,59 @@ func TestPotExecutor(t *testing.T) {
 		time.Sleep(10 * time.Second)
 	}
 	time.Sleep(50 * time.Second)
+}
+
+func TestExecutor2(t *testing.T) {
+	var (
+		db     = rawdb.NewMemoryDatabase()
+		config = *params.AllCliqueProtocolChanges
+	)
+	config.Clique = &params.CliqueConfig{Period: 1, Epoch: 30000}
+	engine := clique.New(config.Clique, db)
+
+	e, b := newTestExecutor(&config, engine, db, 0)
+	defer e.close()
+
+	// This test chain imports the mined blocks.
+	// chain, _ := core.NewBlockChain(rawdb.NewMemoryDatabase(), nil, b.genesis, nil, engine, vm.Config{}, nil, nil)
+	// defer chain.Stop()
+
+	// Start mining!
+	e.start()
+	fmt.Println("1111111111")
+	addr := common.HexToAddress("0x5c31D1AcffcC1bFf0170488307B85Ef074b0cA48")
+	for i := 0; i < 1; i++ {
+		// fmt.Println("add tx")
+		// testtx := b.newRandomTx(false)
+		// testtx := b.newTx(uint64(i))
+		// testtx := types.NewSystemTx(
+		// 	big.NewInt(1),
+		// 	0,
+		// 	big.NewInt(1),
+		// 	big.NewInt(200),
+		// 	50000,
+		// 	&addr,
+		// 	big.NewInt(1000),
+		// 	[]byte{0x0D, 0x06},
+		// 	1,
+		// )
+		signer := types.LatestSigner(params.AllCliqueProtocolChanges)
+		testtx := types.MustSignNewTx(testBankKey, signer, &types.SystemTx{
+			ChainID:    params.AllCliqueProtocolChanges.ChainID,
+			Nonce:      0,
+			Gas:        200,
+			GasTipCap:  big.NewInt(1),
+			GasFeeCap:  big.NewInt(1),
+			To:         &addr,
+			Value:      big.NewInt(1000),
+			Data:       []byte{0x0D, 0x06},
+			SystemFlag: 1,
+		})
+		fmt.Println(testtx.Hash())
+		errs := b.txPool.Add([]*types.Transaction{testtx}, true, false)
+		fmt.Println("errs", errs)
+		// b.txPool.Add([]*types.Transaction{b.newRandomTx(false)}, true, false)
+		time.Sleep(10 * time.Second)
+	}
+	time.Sleep(10 * time.Second)
 }
