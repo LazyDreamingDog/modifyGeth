@@ -99,6 +99,7 @@ var PrecompiledContractsBerlin = map[common.Address]PrecompiledContract{
 	common.BytesToAddress([]byte{23}): &panguStoreProve{},
 	common.BytesToAddress([]byte{24}): &panguStoreVerify{},
 	common.BytesToAddress([]byte{25}): &panguRingsigVer{},
+	common.BytesToAddress([]byte{26}): &tmpsVerify{},
 }
 
 // PrecompiledContractsCancun contains the default set of pre-compiled Ethereum
@@ -115,6 +116,7 @@ var PrecompiledContractsCancun = map[common.Address]PrecompiledContract{
 	common.BytesToAddress([]byte{9}):    &blake2F{},
 	common.BytesToAddress([]byte{0x0a}): &kzgPointEvaluation{},
 	common.BytesToAddress([]byte{20}):   &panguAdd{},
+	common.BytesToAddress([]byte{26}):   &tmpsVerify{},
 }
 
 // PrecompiledContractsBLS contains the set of pre-compiled Ethereum
@@ -130,6 +132,7 @@ var PrecompiledContractsBLS = map[common.Address]PrecompiledContract{
 	common.BytesToAddress([]byte{17}): &bls12381MapG1{},
 	common.BytesToAddress([]byte{18}): &bls12381MapG2{},
 	common.BytesToAddress([]byte{20}): &panguAdd{},
+	common.BytesToAddress([]byte{26}): &tmpsVerify{},
 }
 
 var (

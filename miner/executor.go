@@ -85,7 +85,6 @@ type executorServer struct {
 
 // Receive txs from consensus layer
 func (es *executorServer) CommitBlock(ctx context.Context, pbBlock *pb.ExecBlock) (*pb.Empty, error) {
-	fmt.Println("get commit block")
 	// set leader
 	randomNuber := new(big.Int).SetUint64(pbBlock.GetRandomNumber())
 
@@ -689,7 +688,7 @@ func (e *executor) sendLoop() {
 	for {
 		select {
 		case req := <-e.newWorkCh:
-			fmt.Println("sendLoop get a newWorkCh and start send tx")
+			// fmt.Println("sendLoop get a newWorkCh and start send tx")
 			e.sendNewTxBatch(req.interrupt, req.timestamp)
 		case <-e.exitCh:
 			return
@@ -737,17 +736,13 @@ func (e *executor) fillTransactions(interrupt *atomic.Int32, env *executor_env) 
 	}
 	// TODO: for test
 	if len(localTxs) == 0 {
-		fmt.Println("no txs")
 		return nil
-	} else {
-		fmt.Println("have txs,", len(localTxs))
 	}
+
 	// Fill the block with all available pending transactions.
 	if len(localTxs) > 0 {
 		txs := newTransactionsByPriceAndNonce(env.signer, localTxs, env.header.BaseFee)
-		fmt.Println("txs", txs)
 		if err := e.sendTransactions(env, txs, interrupt); err != nil {
-			fmt.Println("sendTransactions err", err)
 			return err
 		}
 	}
@@ -765,7 +760,7 @@ func (e *executor) sendTransactions(env *executor_env, txs *transactionsByPriceA
 	if env.gasPool == nil {
 		env.gasPool = new(core.GasPool).AddGas(gasLimit)
 	}
-	fmt.Println("txslen", len(txs.txs))
+
 	for {
 		// Check interruption signal and abort building if it's fired.
 		if interrupt != nil {
@@ -780,11 +775,11 @@ func (e *executor) sendTransactions(env *executor_env, txs *transactionsByPriceA
 		}
 		// Retrieve the next transaction and abort if all done.
 		ltx := txs.Peek()
-		fmt.Println("ltx", ltx)
+
 		if ltx == nil {
 			break
 		}
-		fmt.Println("ltx.Tx.Type()", ltx.Tx.Type())
+
 		// If we don't have enough space for the next transaction, skip the account.
 		if env.gasPool.Gas() < ltx.Gas {
 			log.Trace("Not enough gas left for transaction", "hash", ltx.Hash, "left", env.gasPool.Gas(), "needed", ltx.Gas)
@@ -808,8 +803,7 @@ func (e *executor) sendTransactions(env *executor_env, txs *transactionsByPriceA
 
 		// sendTx to consensus
 		_, err := e.execClient.sendTx(tx, e.networkId)
-		fmt.Println("to", tx.To(), "value", tx.Value(), "nonce", tx.Nonce())
-		fmt.Println("tx.Type()", tx.Type(), "err", err)
+
 		if err != nil {
 			log.Trace("Failed to send transaction", "hash", ltx.Hash, "err", err)
 			txs.Pop()
@@ -819,7 +813,7 @@ func (e *executor) sendTransactions(env *executor_env, txs *transactionsByPriceA
 		env.gasPool.SubGas(tx.Gas())
 		txs.Shift()
 	}
-	// fmt.Println("have sent transactions")
+
 	return nil
 }
 
@@ -829,7 +823,6 @@ func (e *executor) executionLoop() {
 	for {
 		select {
 		case req := <-e.execCh:
-			// fmt.Println("executionLoop get a execCh and start execute txs")
 			e.executeNewTxBatch(req.timestamp, req.txs, req.leader, req.randomNumber, req.incentive)
 		case <-e.exitCh:
 			return

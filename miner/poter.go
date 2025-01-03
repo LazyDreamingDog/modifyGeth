@@ -56,7 +56,7 @@ func (p *poter) start() {
 
 	if !p.serving.Load() {
 		// !!! 这一段应该进入配置文件
-		listen, err := net.Listen("tcp", "127.0.0.1:9808") // will be included in config
+		listen, err := net.Listen("tcp", "127.0.0.1:9877") // will be included in config
 		if err != nil {
 			fmt.Println(err)
 			panic("cannot listen!")
