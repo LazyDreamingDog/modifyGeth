@@ -6,19 +6,24 @@ option go_package = "./pb";
 
 message CommitChangeTxRequest {
   bytes TxData = 1;
-  uint64 Amount =2;
-  bytes VerifyHash=3;
+  bytes ToAddress =2;
+  uint64 ToValue =3;
+  bytes ToPublicKey=4;
+  uint64 ToGroupId=5;
+  bytes VerifyHash=6;
+  uint64 Height =7;
 }
 
 message VerifyWithdrawTxRequest {
-  bytes VerifyHash=1;
+  uint64 Height =1;
+  bytes VerifyHash=2;
 }
 
 message VerifyWithdrawTxReply {
   bool VerifyRes=1;
 }
 
-service TransferExecutorGRPC {
+service TransferGRPC {
   rpc CommitChangeTx (CommitChangeTxRequest) returns(Empty) {}
   rpc VerifyWithdrawTx (VerifyWithdrawTxRequest) returns(VerifyWithdrawTxReply) {}
 }

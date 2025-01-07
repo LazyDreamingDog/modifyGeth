@@ -79,6 +79,7 @@ var PrecompiledContractsIstanbul = map[common.Address]PrecompiledContract{
 	common.BytesToAddress([]byte{8}):  &bn256PairingIstanbul{},
 	common.BytesToAddress([]byte{9}):  &blake2F{},
 	common.BytesToAddress([]byte{20}): &panguAdd{},
+	common.BytesToAddress([]byte{26}): &tmpsVerify{},
 }
 
 // PrecompiledContractsBerlin contains the default set of pre-compiled Ethereum

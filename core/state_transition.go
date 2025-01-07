@@ -517,98 +517,6 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 	// 	}, nil
 	// }
 
-	if num := isSystemTx(st.msg); num > 0 {
-		log.Info("System transaction", "from", st.msg.From.Hex(), "to", st.msg.To.Hex(), "value", st.msg.Value)
-		switch num {
-		case 1:
-			log.Info("System transaction", "num=1,do nothing")
-		case 2:
-			// data= 0x0D06,表示是由转账区过来的提现交易
-			log.Info("System transaction", "num=2", "data", st.msg.Data)
-			st.state.AddBalance(*st.msg.To, uint256.MustFromBig(st.msg.Value))
-		default:
-			log.Info("System transaction", "num", num)
-		}
-		return &ExecutionResult{
-			UsedGas:     0,
-			RefundedGas: 0,
-			Err:         nil,
-			ReturnData:  nil,
-		}, nil
-	}
-
-	// Check is done in the upper layer, here just add balance
-	if isTokenTransition(st.msg) {
-		log.Info("Token transition transaction", "to", st.msg.To.Hex())
-		// 截取data解析value
-		value := st.msg.Data[2:]
-		st.state.AddBalance(*st.msg.To, uint256.MustFromBig(new(big.Int).SetBytes(value)))
-		return &ExecutionResult{
-			UsedGas:     st.gasUsed(),
-			RefundedGas: 0,
-			Err:         nil,
-			ReturnData:  nil,
-		}, nil
-	}
-
-	if isCoinMixerAddBalanceTx(st.msg) {
-		log.Info("CoinMixer add balance transaction", "from", st.msg.From.Hex())
-		// 加0.1 ethers
-		st.state.AddBalance(*st.msg.To, uint256.NewInt(0).SetUint64(100000000000000000))
-		return &ExecutionResult{
-			UsedGas:     st.gasUsed(),
-			RefundedGas: 0,
-			Err:         nil,
-			ReturnData:  nil,
-		}, nil
-	}
-
-	if isPUNKTaintedLockTx(st.msg) {
-		log.Info("PUNKTaintedLock transaction", "from", st.msg.From.Hex())
-
-		// Parse Data: After the first two bytes 0x0D03, the third byte indicates the number of addresses,
-		// followed by 20 bytes for each address.
-		// Set the security level of these addresses to 0. It means the account is locked.
-		addressCount := st.msg.Data[2]
-		addresses := make([]common.Address, addressCount)
-		for i := 0; i < int(addressCount); i++ {
-			copy(addresses[i][:], st.msg.Data[3+i*20:])
-		}
-		for _, address := range addresses {
-			log.Info("PUNKTaintedLock", "address", address.Hex())
-			st.state.SetSecurityLevel(address, 0)
-		}
-
-		return &ExecutionResult{
-			UsedGas:     st.gasUsed(),
-			RefundedGas: 0,
-			Err:         nil,
-			ReturnData:  nil,
-		}, nil
-	}
-
-	if isPUNKTaintedUnlockTx(st.msg) {
-		log.Info("PUNKTaintedUnlock transaction", "from", st.msg.From.Hex())
-		// Parse Data: After the first two bytes 0x0D04, the third byte indicates the number of addresses,
-		// followed by 20 bytes for each address.
-		// Set the security level of these addresses to 1. It means the account is unlocked.
-		addressCount := st.msg.Data[2]
-		addresses := make([]common.Address, addressCount)
-		for i := 0; i < int(addressCount); i++ {
-			copy(addresses[i][:], st.msg.Data[3+i*20:])
-		}
-		for _, address := range addresses {
-			st.state.SetSecurityLevel(address, 1)
-		}
-
-		return &ExecutionResult{
-			UsedGas:     st.gasUsed(),
-			RefundedGas: 0,
-			Err:         nil,
-			ReturnData:  nil,
-		}, nil
-	}
-
 	if tracer := st.evm.Config.Tracer; tracer != nil {
 		tracer.CaptureTxStart(st.initialGas)
 		defer func() {
@@ -664,6 +572,120 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 	} else {
 		// Increment the nonce for the next transaction
 		st.state.SetNonce(msg.From, st.state.GetNonce(sender.Address())+1)
+
+		// new transaction execute logic
+		if num := isSystemTx(st.msg); num > 0 {
+			log.Info("System transaction", "from", st.msg.From.Hex(), "to", st.msg.To.Hex(), "value", st.msg.Value)
+			switch num {
+			case 1:
+				log.Info("System transaction", "num=1,do nothing")
+			case 2:
+				// data= 0x0D06,表示是由转账区过来的提现交易
+				log.Info("System transaction", "num=2", "data", st.msg.Data)
+				st.state.AddBalance(*st.msg.To, uint256.MustFromBig(st.msg.Value))
+			default:
+				log.Info("System transaction", "num", num)
+			}
+			return &ExecutionResult{
+				UsedGas:     0,
+				RefundedGas: 0,
+				Err:         nil,
+				ReturnData:  nil,
+			}, nil
+		}
+
+		if isCGIToPUNKTx(st.msg) {
+			log.Info("CGI to PUNK transaction", "from", st.msg.From.Hex())
+
+			// 截取交易中的data，解析出value
+			value := st.msg.Data[2:]
+			log.Info("get value", "data", st.msg.Data[2:])
+			// 将value转换为uint256
+			valueUint256 := uint256.MustFromBig(new(big.Int).SetBytes(value))
+			log.Info("cgi to punk value", "value", valueUint256)
+
+			st.state.AddBalance(*st.msg.To, valueUint256)
+			return &ExecutionResult{
+				UsedGas:     st.gasUsed(),
+				RefundedGas: 0,
+				Err:         nil,
+				ReturnData:  nil,
+			}, nil
+		}
+
+		// Check is done in the upper layer, here just add balance
+		if isTokenTransition(st.msg) {
+			log.Info("Token transition transaction", "to", st.msg.To.Hex())
+			// 截取data解析value
+			value := st.msg.Data[2:]
+			st.state.AddBalance(*st.msg.To, uint256.MustFromBig(new(big.Int).SetBytes(value)))
+			return &ExecutionResult{
+				UsedGas:     st.gasUsed(),
+				RefundedGas: 0,
+				Err:         nil,
+				ReturnData:  nil,
+			}, nil
+		}
+
+		if isCoinMixerAddBalanceTx(st.msg) {
+			log.Info("CoinMixer add balance transaction", "from", st.msg.From.Hex())
+			// 加0.1 ethers
+			st.state.AddBalance(*st.msg.To, uint256.NewInt(0).SetUint64(100000000000000000))
+			return &ExecutionResult{
+				UsedGas:     st.gasUsed(),
+				RefundedGas: 0,
+				Err:         nil,
+				ReturnData:  nil,
+			}, nil
+		}
+
+		if isPUNKTaintedLockTx(st.msg) {
+			log.Info("PUNKTaintedLock transaction", "from", st.msg.From.Hex())
+
+			// Parse Data: After the first two bytes 0x0D03, the third byte indicates the number of addresses,
+			// followed by 20 bytes for each address.
+			// Set the security level of these addresses to 0. It means the account is locked.
+			addressCount := st.msg.Data[2]
+			addresses := make([]common.Address, addressCount)
+			for i := 0; i < int(addressCount); i++ {
+				copy(addresses[i][:], st.msg.Data[3+i*20:])
+			}
+			for _, address := range addresses {
+				log.Info("PUNKTaintedLock", "address", address.Hex())
+				st.state.SetSecurityLevel(address, 0)
+			}
+
+			return &ExecutionResult{
+				UsedGas:     st.gasUsed(),
+				RefundedGas: 0,
+				Err:         nil,
+				ReturnData:  nil,
+			}, nil
+		}
+
+		if isPUNKTaintedUnlockTx(st.msg) {
+			log.Info("PUNKTaintedUnlock transaction", "from", st.msg.From.Hex())
+			// Parse Data: After the first two bytes 0x0D04, the third byte indicates the number of addresses,
+			// followed by 20 bytes for each address.
+			// Set the security level of these addresses to 1. It means the account is unlocked.
+			addressCount := st.msg.Data[2]
+			addresses := make([]common.Address, addressCount)
+			for i := 0; i < int(addressCount); i++ {
+				copy(addresses[i][:], st.msg.Data[3+i*20:])
+			}
+			for _, address := range addresses {
+				st.state.SetSecurityLevel(address, 1)
+			}
+
+			return &ExecutionResult{
+				UsedGas:     st.gasUsed(),
+				RefundedGas: 0,
+				Err:         nil,
+				ReturnData:  nil,
+			}, nil
+		}
+
+		// geth logic
 		ret, st.gasRemaining, vmerr = st.evm.Call(sender, st.to(), msg.Data, st.gasRemaining, value)
 		if vmerr != nil {
 			log.Error("Call vmerr", "err", vmerr)
@@ -823,4 +845,14 @@ func isSystemTx(msg *Message) int {
 		return 1
 	}
 	return 0
+}
+
+func isCGIToPUNKTx(msg *Message) bool {
+	if msg.Data == nil || len(msg.Data) < 3 {
+		return false
+	}
+	if msg.Data[0] == 0x0D && msg.Data[1] == 0x07 {
+		return true
+	}
+	return false
 }

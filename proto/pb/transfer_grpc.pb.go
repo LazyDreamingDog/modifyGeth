@@ -19,14 +19,16 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	TransferGRPC_ToTransferCommit_FullMethodName = "/pb.TransferGRPC/ToTransferCommit"
+	TransferGRPC_CommitChangeTx_FullMethodName   = "/pb.TransferGRPC/CommitChangeTx"
+	TransferGRPC_VerifyWithdrawTx_FullMethodName = "/pb.TransferGRPC/VerifyWithdrawTx"
 )
 
 // TransferGRPCClient is the client API for TransferGRPC service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type TransferGRPCClient interface {
-	ToTransferCommit(ctx context.Context, in *ToTransferRequest, opts ...grpc.CallOption) (*ToTransferReply, error)
+	CommitChangeTx(ctx context.Context, in *CommitChangeTxRequest, opts ...grpc.CallOption) (*Empty, error)
+	VerifyWithdrawTx(ctx context.Context, in *VerifyWithdrawTxRequest, opts ...grpc.CallOption) (*VerifyWithdrawTxReply, error)
 }
 
 type transferGRPCClient struct {
@@ -37,10 +39,20 @@ func NewTransferGRPCClient(cc grpc.ClientConnInterface) TransferGRPCClient {
 	return &transferGRPCClient{cc}
 }
 
-func (c *transferGRPCClient) ToTransferCommit(ctx context.Context, in *ToTransferRequest, opts ...grpc.CallOption) (*ToTransferReply, error) {
+func (c *transferGRPCClient) CommitChangeTx(ctx context.Context, in *CommitChangeTxRequest, opts ...grpc.CallOption) (*Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ToTransferReply)
-	err := c.cc.Invoke(ctx, TransferGRPC_ToTransferCommit_FullMethodName, in, out, cOpts...)
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, TransferGRPC_CommitChangeTx_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *transferGRPCClient) VerifyWithdrawTx(ctx context.Context, in *VerifyWithdrawTxRequest, opts ...grpc.CallOption) (*VerifyWithdrawTxReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(VerifyWithdrawTxReply)
+	err := c.cc.Invoke(ctx, TransferGRPC_VerifyWithdrawTx_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +63,8 @@ func (c *transferGRPCClient) ToTransferCommit(ctx context.Context, in *ToTransfe
 // All implementations must embed UnimplementedTransferGRPCServer
 // for forward compatibility.
 type TransferGRPCServer interface {
-	ToTransferCommit(context.Context, *ToTransferRequest) (*ToTransferReply, error)
+	CommitChangeTx(context.Context, *CommitChangeTxRequest) (*Empty, error)
+	VerifyWithdrawTx(context.Context, *VerifyWithdrawTxRequest) (*VerifyWithdrawTxReply, error)
 	mustEmbedUnimplementedTransferGRPCServer()
 }
 
@@ -62,8 +75,11 @@ type TransferGRPCServer interface {
 // pointer dereference when methods are called.
 type UnimplementedTransferGRPCServer struct{}
 
-func (UnimplementedTransferGRPCServer) ToTransferCommit(context.Context, *ToTransferRequest) (*ToTransferReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ToTransferCommit not implemented")
+func (UnimplementedTransferGRPCServer) CommitChangeTx(context.Context, *CommitChangeTxRequest) (*Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CommitChangeTx not implemented")
+}
+func (UnimplementedTransferGRPCServer) VerifyWithdrawTx(context.Context, *VerifyWithdrawTxRequest) (*VerifyWithdrawTxReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method VerifyWithdrawTx not implemented")
 }
 func (UnimplementedTransferGRPCServer) mustEmbedUnimplementedTransferGRPCServer() {}
 func (UnimplementedTransferGRPCServer) testEmbeddedByValue()                      {}
@@ -86,20 +102,38 @@ func RegisterTransferGRPCServer(s grpc.ServiceRegistrar, srv TransferGRPCServer)
 	s.RegisterService(&TransferGRPC_ServiceDesc, srv)
 }
 
-func _TransferGRPC_ToTransferCommit_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ToTransferRequest)
+func _TransferGRPC_CommitChangeTx_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CommitChangeTxRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(TransferGRPCServer).ToTransferCommit(ctx, in)
+		return srv.(TransferGRPCServer).CommitChangeTx(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: TransferGRPC_ToTransferCommit_FullMethodName,
+		FullMethod: TransferGRPC_CommitChangeTx_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TransferGRPCServer).ToTransferCommit(ctx, req.(*ToTransferRequest))
+		return srv.(TransferGRPCServer).CommitChangeTx(ctx, req.(*CommitChangeTxRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _TransferGRPC_VerifyWithdrawTx_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VerifyWithdrawTxRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TransferGRPCServer).VerifyWithdrawTx(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TransferGRPC_VerifyWithdrawTx_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TransferGRPCServer).VerifyWithdrawTx(ctx, req.(*VerifyWithdrawTxRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -112,8 +146,12 @@ var TransferGRPC_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*TransferGRPCServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "ToTransferCommit",
-			Handler:    _TransferGRPC_ToTransferCommit_Handler,
+			MethodName: "CommitChangeTx",
+			Handler:    _TransferGRPC_CommitChangeTx_Handler,
+		},
+		{
+			MethodName: "VerifyWithdrawTx",
+			Handler:    _TransferGRPC_VerifyWithdrawTx_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

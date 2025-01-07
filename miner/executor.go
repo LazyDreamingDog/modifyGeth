@@ -2,6 +2,7 @@ package miner
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"math/big"
@@ -902,12 +903,8 @@ func (e *executor) executeTransactions(env *executor_env, txs types.Transactions
 	log.Info("start execute transactions", "receive init txs len:", txs.Len())
 	env.initTxcount = txs.Len()
 	for _, tx := range txs {
-		if isCorrectFromTransferTx(tx) {
+		if e.isCorrectFromTransferTx(tx) {
 			log.Info("Correct from transfer transaction", "hash", tx.Hash())
-		} else {
-			// 扔掉这个交易
-			log.Info("Incorrect from transfer transaction", "hash", tx.Hash())
-			continue
 		}
 
 		// If we don't have enough gas for any further transactions then we're done.
@@ -968,11 +965,20 @@ func (e *executor) executeTransactions(env *executor_env, txs types.Transactions
 func (e *executor) executeTransaction(env *executor_env, tx *types.Transaction) ([]*types.Log, error) {
 	// TODO : send to transfer
 	if isToTransferTransaction(tx) {
-		from, err := types.Sender(env.signer, tx)
-		if err != nil {
-			return nil, err
-		}
-		e.execClient.transferClient.ToTransferCommit(context.Background(), &pb.ToTransferRequest{FromAddress: from.Bytes(), BAddress: tx.To().Bytes(), Amount: int32(tx.Value().Int64())})
+		// 读取tx.Data()[2:]作为uint64的ToGroupId
+		toGroupId := binary.BigEndian.Uint64(tx.Data()[2:10])
+		// 读取tx.Data()[10:]作为uint64的ToPublicKey
+		toPublicKey := tx.Data()[10:]
+
+		e.execClient.transferClient.CommitChangeTx(context.Background(), &pb.CommitChangeTxRequest{
+			TxData:      tx.Data(),                  // 暂时随便扔个数据
+			ToAddress:   tx.To().Bytes(),            // 目标地址
+			ToValue:     uint64(tx.Value().Int64()), // 目标金额
+			ToPublicKey: toPublicKey,                // 目标公钥
+			ToGroupId:   toGroupId,                  // 目标群组
+			VerifyHash:  tx.Hash().Bytes(),          // 验证哈希
+			Height:      env.header.Number.Uint64(), // 区块高度
+		})
 		// 这里依然要执行，然后产生链上记录给转账区进行查询验证。
 	}
 
@@ -1105,19 +1111,37 @@ func isToTransferTransaction(tx *types.Transaction) bool {
 		return false
 	}
 
-	if tx.Data()[0] == 0x0D && tx.Data()[1] == 0x07 {
+	if tx.Data()[0] == 0x0D && tx.Data()[1] == 0x08 {
 		return true
 	}
 	return false
 }
 
-func isCorrectFromTransferTx(tx *types.Transaction) bool {
-	if tx.Type() == types.SystemTxType && tx.Data()[0] == 0x0D && tx.Data()[1] == 0x06 {
-		// 读取tx.Data()[2:]作为verifyHash
-		verifyHash := tx.Data()[2:]
-		fmt.Println("verifyHash", verifyHash)
+func (e *executor) isCorrectFromTransferTx(tx *types.Transaction) bool {
+	if tx.Data() == nil || len(tx.Data()) < 3 {
+		return false
+	}
+	if tx.Data()[0] == 0x0D && tx.Data()[1] == 0x06 {
+		// 确保tx.Data()长度至少为10字节(2字节标识符 + 8字节height)
+		if len(tx.Data()) < 10 {
+			return false
+		}
+
+		// 读取tx.Data解析uint64的height
+		height := binary.BigEndian.Uint64(tx.Data()[2:10])
+
+		// 读取tx.Data()[10:]作为verifyHash
+		verifyHash := tx.Data()[10:]
+
 		// 调用转账接口进行验证
-		// e.execClient.verifyTransferTx(verifyHash)
+		_, err := e.execClient.transferClient.VerifyWithdrawTx(context.Background(), &pb.VerifyWithdrawTxRequest{
+			Height:     height,
+			VerifyHash: verifyHash,
+		})
+		if err != nil {
+			log.Error("Failed to verify withdraw tx", "err", err)
+			return false
+		}
 		return true
 	}
 	return false

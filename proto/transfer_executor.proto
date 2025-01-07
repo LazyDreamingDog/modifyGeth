@@ -14,7 +14,8 @@ message CommitWithdrawTxRequest {
 
 message VerifyChangeTxRequest {
   uint64 Value = 1;
-  bytes VerifyHash = 2;
+  uint64 Height = 2;
+  bytes VerifyHash = 3;
 }
 
 message VerifyChangeTxReply {

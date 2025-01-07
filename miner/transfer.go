@@ -20,6 +20,7 @@ import (
 
 type txReq struct {
 	verifyHash []byte
+	height     uint64
 	tx         *types.Transaction
 }
 
@@ -115,6 +116,7 @@ func (t *Transfer) CommitWithdrawTx(ctx context.Context, request *pb.CommitWithd
 	}
 	// 将交易插入到txpool
 	t.txChannel <- &txReq{
+		height:     request.Height,
 		verifyHash: request.VerifyHash,
 		tx:         gettx,
 	}
@@ -130,6 +132,8 @@ func (t *Transfer) VerifyChangeTx(ctx context.Context, request *pb.VerifyChangeT
 	txhash := request.VerifyHash
 	value := request.Value
 	// TODO: 需要验证重放攻击
+	height := request.Height
+	fmt.Println("height", height)
 	// 读取账户的提现的最新高度，判断验证交易的区块高度是否落后
 	// 从blockchain中读取交易进行比对
 	blockchain := t.chain

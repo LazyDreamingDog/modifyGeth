@@ -20,6 +20,7 @@ func (d *tmpsVerify) RequiredGas(input []byte) uint64 {
 
 // Run 方法：解析输入并调用 Verify
 func (d *tmpsVerify) Run(input []byte, blkCtx BlockContext) ([]byte, error) {
+	// fmt.Println("input:", input)
 	// 调用 decode 函数解析输入
 	pk, c, pi, vk, err := tmps.Decode(input)
 	if err != nil {
