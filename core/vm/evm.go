@@ -254,8 +254,9 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		callFuncParam := cryptoupgrade.UnpackCall(input)
 		algorithmName := callFuncParam[0].(string)
 		algorithmParams := callFuncParam[1].([]byte)
+
 		// Call Algorithm: updata gas and return
-		ret, gas = cryptoupgrade.CallAlgorithm(algorithmName, gas, algorithmParams)
+		ret, gas, err = cryptoupgrade.CallAlgorithm(algorithmName, gas, algorithmParams)
 
 	} else {
 		// security level check

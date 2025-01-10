@@ -206,7 +206,7 @@ var (
 
 	// newly added params here
 	ExternalExecutionAddress = common.HexToAddress("0x0000000000000000000000000000000000000000")
-	// Interest rate
-	InterestRate         uint64 = 100
+	
+	InterestRate         uint64 = 100 // Interest rate
 	TransferInterestRate uint64 = 100 // Interest portion of a transfer transaction that remains with the sender
 )

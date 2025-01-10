@@ -8,8 +8,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-// * The test will create a copy in current folder.
-func TestCompress(t *testing.T) {
+// The test will create a copy in current folder.
+func TestCompressWithDecompress(t *testing.T) {
 	compressFile := "./compressed.go"
 	compressedString, err := compressFileToString(compressFile)
 	if err != nil {
@@ -31,7 +31,7 @@ func TestCompress(t *testing.T) {
 	}
 }
 
-// * Decompressed check
+// Decompressed check
 func TestDecompress(t *testing.T) {
 	decodedData := "Hello world!"
 	rootPath, err := os.Getwd()
@@ -42,9 +42,9 @@ func TestDecompress(t *testing.T) {
 	}
 }
 
-// * Use this test to get compressed string, as input for geth.js command line
-func TestCompressOnly(t *testing.T) {
-	compressFile := "./testgo/add.go"
+// Use this test to get compressed string, as input for geth.js command line
+func TestCompress(t *testing.T) {
+	compressFile := "./testgo/src/add.go"
 	compressedString, err := compressFileToString(compressFile)
 	if err != nil {
 		fmt.Printf("err: %v\n", err)

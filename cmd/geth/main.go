@@ -366,7 +366,7 @@ func startNode(ctx *cli.Context, stack *node.Node, backend ethapi.Backend, isCon
 	rpcClient := stack.Attach()
 	ethClient := ethclient.NewClient(rpcClient)
 
-	// * Bind cryptoupgrade  pull code event
+	// Bind cryptoupgrade pull code event
 	go cryptoupgrade.BindPullcode(ethClient)
 
 	go func() {

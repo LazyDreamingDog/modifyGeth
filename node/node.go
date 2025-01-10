@@ -32,6 +32,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/rawdb"
+	"github.com/ethereum/go-ethereum/cryptoupgrade"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
@@ -250,6 +251,11 @@ func (n *Node) doClose(errs []error) error {
 
 	// Unblock n.Wait.
 	close(n.stop)
+
+	// Record upgradecrypto info
+	if err := cryptoupgrade.Store(); err != nil {
+		errs = append(errs, err)
+	}
 
 	// Report any errors that might have occurred.
 	switch len(errs) {

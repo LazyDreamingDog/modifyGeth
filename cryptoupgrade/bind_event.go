@@ -5,6 +5,8 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"path/filepath"
+	"runtime"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
@@ -72,23 +74,26 @@ func BindPullcode(client client) {
 			if pc == nil {
 				return
 			}
+
 			// Decompressed string to gofile
-			sourcefilePath := compressedPath + "src/" + name + ".go"
+			filepath.Join()
+			sourcefilePath := gofilePath(name)
 			err = decompressStringToFile(pc.code, sourcefilePath)
 			if err == nil {
 				log.Info(fmt.Sprintf("Decompressed algorithm %s to %s", name, sourcefilePath))
 			} else {
 				log.Error(fmt.Sprintf("Error in decompressed algorithm %s to %s.Err:%v", name, sourcefilePath, err))
 			}
-			goVerison := GoversionCheck()
+			goVerison := runtime.Version()
+
 			// Compiled to .so file
-			pluginfilePath := compressedPath + "so/" + name + ".so"
+			pluginfilePath := sofilePath(name)
 			err = compilePlugin(sourcefilePath, pluginfilePath)
 			if err != nil {
 				log.Error(fmt.Sprintf("Error in plugin compile:%v", err))
 			} else {
 				log.Info(fmt.Sprintf("Using go version: %s,compiled algorithm to %s.", goVerison, pluginfilePath))
-				upgradeAlgorithmInfo[name] = *pc
+				algoInfoMap[name] = *pc
 			}
 		}
 	}
@@ -96,7 +101,7 @@ func BindPullcode(client client) {
 }
 
 // * Through Client call contract, get the infomation of @name algorithm
-func lookupCodeInfo(client client, name string) *codeInfo {
+func lookupCodeInfo(client client, name string) *algoInfo {
 
 	// Must equal to method in codestorage contract
 	lookupFuncName := "getInfo"
@@ -120,7 +125,7 @@ func lookupCodeInfo(client client, name string) *codeInfo {
 	} else {
 		log.Info(fmt.Sprintf("Successful get infomation of %s", name))
 		// TODO exception handing
-		return &codeInfo{
+		return &algoInfo{
 			code:  ci[0].(string),
 			gas:   ci[1].(uint64),
 			itype: ci[2].(string),

@@ -1,6 +1,7 @@
 package cryptoupgrade
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -8,27 +9,17 @@ import (
 	"reflect"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/cryptoupgrade/preload"
 	"github.com/ethereum/go-ethereum/log"
 )
 
 // Compile source go file to .sp file, only approve run. Below one only approve debug
 func compilePlugin(src string, outputPath string) error {
-	cmd := exec.Command("go", "build", "-buildmode=plugin", "-tags", "urfave_cli_no_docs,ckzg", "-o", outputPath, src)
+	cmd := exec.Command("go", "build", "-buildmode=plugin", "-tags=purego", "-o", outputPath, src)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	GoversionCheck()
+	// fmt.Printf("go version: %v\n", runtime.Version())
 	return cmd.Run()
-}
-
-// Get go version
-func GoversionCheck() string {
-	// Get go version
-	goverCmd := exec.Command("go", "version")
-	output, err := goverCmd.Output()
-	if err != nil {
-		fmt.Printf("go version command err: %v\n", err)
-	}
-	return string(output)
 }
 
 // ! There may be conflicts between the go version and the go compiler version, so If you choose a plugin that supports dbg, it can only support debugging but not normal execution.
@@ -48,68 +39,132 @@ func capitalString(str string) string {
 	return string(bytes)
 }
 
-func CallAlgorithm(funName string, gas uint64, encodedInput []byte) ([]byte, uint64) {
+func CallAlgorithm(algoName string, gas uint64, encodedInput []byte) ([]byte, uint64, error) {
+	algoName = capitalString(algoName)
 
-	// ! using in test
-	compressedPath = "./testgo/"
+	fmt.Printf("Call algorithm %s,encodedinput: %s\n", algoName, common.Bytes2Hex(encodedInput))
 
-	fmt.Printf("Call algorithm %s,encodedinput: %s\n", funName, common.Bytes2Hex(encodedInput))
-	pluginPath := compressedPath + "so/" + funName + ".so"
-	// Decode input
-	funcInfo := upgradeAlgorithmInfo[funName]
+	p, ok := preload.IsPreLoad(algoName)
+	if ok {
+		return callPreloadAlgo(p, gas, encodedInput)
+	} else {
+		pluginPath := sofilePath(algoName)
+		return callUpgradeAlgo(algoName, pluginPath, gas, encodedInput)
+	}
+
+}
+
+func callUpgradeAlgo(funcName string, pluginPath string, gas uint64, encodedInput []byte) ([]byte, uint64, error) {
+	// Get algorithm info
+	funcInfo := algoInfoMap[funcName]
 	inputType, outputType := funcInfo.getTypeList()
 	fmt.Printf("Algorithm itype: %v ,otype:%v\n", inputType, outputType)
+
+	// Gas sufficient check
+	if gas < funcInfo.gas {
+		return nil, gas, errors.New("out of gas")
+	}
+
+	// Decode input
 	input, err := UnpackInput(encodedInput, inputType)
 	if err != nil {
 		log.Error("Unpack input from callFunc error:", err)
-		fmt.Println("Unpack input from callFunc error:", err)
+		return nil, gas, err
 	}
-	// Attention 1.[]interface{} and ...interface{} 2.Algorithm capital
-	output := callPlugin(pluginPath, capitalString(funName), input)
+
+	// Call algorithm. Attention 1.[]interface{} and ...interface{} 2.Algorithm name must be capital
+	output, err := callPlugin(pluginPath, funcName, input)
+	if err != nil {
+		log.Error("Call Plugin error", err)
+		return nil, gas, err
+	}
+
+	// Output encode
 	encodedOutput, err := PackOutput(output, outputType)
-	remainGas := uint64(0)
 	if err != nil {
 		log.Error("Pack output error:", err)
-		fmt.Println("Pack output error:", err)
-	} else {
-		remainGas = gas - uint64(funcInfo.gas)
-		log.Info(fmt.Sprintf("Successful call upgrade algorithm. Gas:%d EncodeReturn: %v", gas, encodedOutput))
+		return nil, gas, err
 	}
-	return encodedOutput, remainGas
+
+	// Gas deduction and return output
+	remainGas := gas - uint64(funcInfo.gas)
+	log.Info(fmt.Sprintf("Successful call upgrade algorithm. Gas:%d EncodeReturn: %v", gas, encodedOutput))
+	return encodedOutput, remainGas, nil
+}
+
+func callPreloadAlgo(algo preload.PreLoadAlgorithm, gas uint64, encodedInput []byte) ([]byte, uint64, error) {
+	// Gas sufficient check
+	if gas < algo.RequiredGas() {
+		return nil, gas, errors.New("out of gas")
+	}
+
+	// Get type list
+	itype, otype := algo.GetTypeList()
+
+	// Decode input
+	input, err := UnpackInput(encodedInput, itype)
+	if err != nil {
+		log.Error("Unpack input from callFunc error:", err)
+		return nil, gas, err
+	}
+
+	// Call algorithm
+	p := algo.TargetFunc()
+	output, err := callFunction(p, input)
+	if err != nil {
+		log.Error("Pack output error:", err)
+		return nil, gas, err
+	}
+
+	// Decode output
+	encodedOutput, err := PackOutput(output, otype)
+	if err != nil {
+		log.Error("Pack output error:", err)
+		return nil, gas, err
+	}
+
+	// Gas deduction
+	remainGas := gas - algo.RequiredGas()
+	log.Info(fmt.Sprintf("Successful call upgrade algorithm. Gas:%d EncodeReturn: %v", gas, encodedOutput))
+	return encodedOutput, remainGas, err
 }
 
 // Call fun in plugin, parameter and return are mutable types
-func callPlugin(pluginPath string, funName string, args []interface{}) []interface{} {
+func callPlugin(pluginPath string, funName string, args []interface{}) ([]interface{}, error) {
+	// Load plugin
 	p, err := plugin.Open(pluginPath)
 	if err != nil {
-		log.Error(fmt.Sprintf("Failed to open plugin: path %s,err %v\n", pluginPath, err))
-		fmt.Printf("Failed to open plugin: path %s,err %v\n", pluginPath, err)
-		return nil
+		log.Error(fmt.Sprintf("Failed to open plugin: path is %s,err %v\n", pluginPath, err))
+		return nil, err
 	}
+
+	// Lookup func in plugin
 	fn, err := p.Lookup(funName)
 	if err != nil {
 		log.Error(fmt.Sprintf("Failed to find symbol %s in plugin %s: %v\n", funName, pluginPath, err))
-		fmt.Printf("Failed to find symbol %s in plugin %s: %v\n", funName, pluginPath, err)
-		return nil
+		return nil, err
 	}
+
+	// Call func and return
 	ReturnList, err := callFunction(fn, args)
 	if err != nil {
 		log.Error("Error in call fun ", funName, " in plugin ", pluginPath)
-		fmt.Println("Error in call fun ", funName, " in plugin ", pluginPath)
-		return nil
+		return nil, err
 	} else {
-		return ReturnList
+		return ReturnList, nil
 	}
 }
 
 // Provide a unified calling entry. Return fn's return as an interface{} list
 func callFunction(fn interface{}, args []interface{}) ([]interface{}, error) {
 	v := reflect.ValueOf(fn)
+
 	fmt.Printf("Step 1: Checking if fn is a function: Kind = %s\n", v.Kind())
 	// Chech whether fn is function type
 	if v.Kind() != reflect.Func {
 		return nil, fmt.Errorf("provided value is not a function")
 	}
+
 	fmt.Printf("Step 2: Construct input\n")
 	// Construct parameters to input
 	in := make([]reflect.Value, len(args))
@@ -117,10 +172,12 @@ func callFunction(fn interface{}, args []interface{}) ([]interface{}, error) {
 		fmt.Printf("Arg[%d]: Type = %T, Value = %v\n", i, arg, arg)
 		in[i] = reflect.ValueOf(arg)
 	}
-	fmt.Printf("Step 3: Call\n")
+
+	fmt.Printf("Step 3: Call function\n")
 	// Reflect Call
 	result := v.Call(in)
 	out := make([]interface{}, len(result))
+
 	fmt.Printf("Step 4: Get return\n")
 	for i, r := range result {
 		// Convert reflect.Value to interface{}
