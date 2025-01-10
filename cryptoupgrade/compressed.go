@@ -41,6 +41,7 @@ func decompressStringToFile(compressedString string, outputPath string) error {
 		return err
 	}
 	defer reader.Close()
+
 	decodedData, err := io.ReadAll(reader)
 	if err != nil {
 		return err

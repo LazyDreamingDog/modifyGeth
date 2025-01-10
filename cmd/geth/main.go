@@ -367,7 +367,7 @@ func startNode(ctx *cli.Context, stack *node.Node, backend ethapi.Backend, isCon
 	ethClient := ethclient.NewClient(rpcClient)
 
 	// Bind cryptoupgrade pull code event
-	go cryptoupgrade.BindPullcode(ethClient)
+	go cryptoupgrade.BindCodeUploaded(ethClient)
 
 	go func() {
 		// Open any wallets already attached

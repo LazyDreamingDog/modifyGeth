@@ -21,33 +21,30 @@ type client interface {
 	CallContract(ctx context.Context, msg ethereum.CallMsg, blockNumber *big.Int) ([]byte, error)
 }
 
-// * parse event from receipt
+// Parse event from receipt
 func ParseReceipt(receipt *types.Receipt) {
-	eventSignature := []byte("pullcode(string)")
-	eventHash := crypto.Keccak256Hash(eventSignature)
+	eventHash := crypto.Keccak256Hash(codeUploaded[:])
 
 	for _, vLog := range receipt.Logs {
 		fmt.Println(vLog)
 		if vLog.Topics[0] == eventHash {
 			fmt.Println("Event found in transaction logs!")
 			// Event in codestorage.sol
-			type pullcode struct {
-				name string
-			}
-			var event pullcode
-			err := CodeStorageABI.UnpackIntoInterface(&event, "pullcode", vLog.Data)
+
+			var name string
+			err := CodeStorageABI.UnpackIntoInterface(&name, "codeUploaded", vLog.Data)
 			if err != nil {
 				fmt.Printf("Failed to unpack log data: %v", err)
 			}
-			fmt.Printf("Event data: Name=%s\n", event.name)
+			fmt.Printf("Event data: Name=%s\n", name)
 		}
 	}
 }
 
-func BindPullcode(client client) {
+func BindCodeUploaded(client client) {
 	query := ethereum.FilterQuery{
 		Addresses: []common.Address{CodeStorageAddress},
-		Topics:    [][]common.Hash{{pullCodeEventHash}}, // Event hash
+		Topics:    [][]common.Hash{{codeUploaded}}, // Event hash
 	}
 	logCh := make(chan types.Log)
 	// Subscribe to logs that meet FilterQuery,and logs will be stored in the logCh
@@ -59,20 +56,25 @@ func BindPullcode(client client) {
 	for {
 		select {
 		case err := <-sub.Err():
-			log.Info("Error while listening for logs: %v", err)
+			log.Error("Error while listening for logs: %v", err)
 		case Log := <-logCh:
 			// Parse name from event
-			log.Info("Catch pull code event!")
+			log.Info("Catch codeUploaded event!")
 			var name string
-			err = CodeStorageABI.UnpackIntoInterface(&name, "pullcode", Log.Data)
+			err = CodeStorageABI.UnpackIntoInterface(&name, "codeUploaded", Log.Data)
+			name = capitalString(name)
 			if err != nil {
 				log.Error("Decode log data err!")
+				continue
 			} else if name == "" {
-				log.Error("Err in parse name from pullcode event")
+				log.Error("Err in parse name from @codeUploaded event")
+				continue
 			}
+
+			// Lookup algorithm info from chain
 			pc := lookupCodeInfo(client, name)
 			if pc == nil {
-				return
+				continue
 			}
 
 			// Decompressed string to gofile
@@ -83,6 +85,7 @@ func BindPullcode(client client) {
 				log.Info(fmt.Sprintf("Decompressed algorithm %s to %s", name, sourcefilePath))
 			} else {
 				log.Error(fmt.Sprintf("Error in decompressed algorithm %s to %s.Err:%v", name, sourcefilePath, err))
+				continue
 			}
 			goVerison := runtime.Version()
 
@@ -91,6 +94,7 @@ func BindPullcode(client client) {
 			err = compilePlugin(sourcefilePath, pluginfilePath)
 			if err != nil {
 				log.Error(fmt.Sprintf("Error in plugin compile:%v", err))
+				continue
 			} else {
 				log.Info(fmt.Sprintf("Using go version: %s,compiled algorithm to %s.", goVerison, pluginfilePath))
 				algoInfoMap[name] = *pc
@@ -100,7 +104,7 @@ func BindPullcode(client client) {
 
 }
 
-// * Through Client call contract, get the infomation of @name algorithm
+// Through Client call contract, get the infomation of @name algorithm
 func lookupCodeInfo(client client, name string) *algoInfo {
 
 	// Must equal to method in codestorage contract

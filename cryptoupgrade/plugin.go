@@ -42,7 +42,7 @@ func capitalString(str string) string {
 func CallAlgorithm(algoName string, gas uint64, encodedInput []byte) ([]byte, uint64, error) {
 	algoName = capitalString(algoName)
 
-	fmt.Printf("Call algorithm %s,encodedinput: %s\n", algoName, common.Bytes2Hex(encodedInput))
+	log.Info(fmt.Sprintf("Call algorithm %s,encodedinput: %s\n", algoName, common.Bytes2Hex(encodedInput)))
 
 	p, ok := preload.IsPreLoad(algoName)
 	if ok {
@@ -58,7 +58,7 @@ func callUpgradeAlgo(funcName string, pluginPath string, gas uint64, encodedInpu
 	// Get algorithm info
 	funcInfo := algoInfoMap[funcName]
 	inputType, outputType := funcInfo.getTypeList()
-	fmt.Printf("Algorithm itype: %v ,otype:%v\n", inputType, outputType)
+	log.Info(fmt.Sprintf("Algorithm itype: %v ,otype:%v\n", inputType, outputType))
 
 	// Gas sufficient check
 	if gas < funcInfo.gas {

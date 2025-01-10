@@ -104,7 +104,7 @@ func TestBlake2b(t *testing.T) {
 		code:  "",
 		gas:   10,
 		itype: "bytes",
-		otype: "bytes32",
+		otype: "bytes",
 	}
 	// Call plugin
 	output, gas, err := callUpgradeAlgo(funcName, plugFile, 100, input)

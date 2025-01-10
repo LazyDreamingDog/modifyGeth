@@ -9,7 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-// * Decode ABI data, using contract abi.
+// Decode ABI data, using contract abi.
 func TestABICode(t *testing.T) {
 	var (
 		funcName = "vdf"
@@ -58,7 +58,7 @@ func TestPackVar(t *testing.T) {
 	}
 }
 
-// * Try to decode abi data, only using params type not contract abi.
+// Try to decode abi data, only using params type not contract abi.
 func TestDecode(t *testing.T) {
 	// Define solidity type
 	stringType, _ := abi.NewType("string", "", nil)
@@ -87,4 +87,24 @@ func TestDecode(t *testing.T) {
 	t.Log(decodeData[1].(common.Address))
 	t.Log(decodeData[2].(string))
 	t.Log(decodeData[3].(*big.Int))
+}
+
+func TestParseEvent(t *testing.T) {
+	data := "0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000036164640000000000000000000000000000000000000000000000000000000000"
+	var name string
+	err := CodeStorageABI.UnpackIntoInterface(&name, "codeUploaded", common.Hex2Bytes(data))
+	if err != nil {
+		t.Error(err)
+		t.Fail()
+	} else {
+		t.Log(name)
+	}
+}
+
+func TestMethodID(t *testing.T) {
+	// Check ABI is illegal
+	for i, c := range CodeStorageABI.Methods {
+		t.Logf("%s:%v\n", i, c)
+	}
+	t.Log(CodeStorageABI.Methods["callFunc"].ID)
 }

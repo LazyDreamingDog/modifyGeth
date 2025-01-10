@@ -11,77 +11,24 @@ import (
 
 // Private attributes
 var (
-	pullCodeEventHash   = crypto.Keccak256Hash([]byte("pullcode(string)"))
-	algoInfoPath        = "./plugin/algorithm_info.json"
-	compressedPath      = "./plugin"
-	codeStorageABI_json = `[
+	codeUploaded   = crypto.Keccak256Hash([]byte("codeUploaded(string)"))
+	algoInfoPath   = "./plugin/algorithm_info.json"
+	compressedPath = "./plugin"
+)
+
+var codeStorageABI_json = `
+[
     {
       "anonymous": false,
       "inputs": [
         {
           "indexed": false,
           "internalType": "string",
-          "name": "voucherName",
+          "name": "name",
           "type": "string"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "conversionRate",
-          "type": "uint256"
         }
       ],
-      "name": "VoucherCreated",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": false,
-          "internalType": "address",
-          "name": "buyer",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "string",
-          "name": "voucherName",
-          "type": "string"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
-        }
-      ],
-      "name": "VoucherPurchased",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": false,
-          "internalType": "address",
-          "name": "user",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "string",
-          "name": "voucherName",
-          "type": "string"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
-        }
-      ],
-      "name": "VoucherUsed",
+      "name": "codeUploaded",
       "type": "event"
     },
     {
@@ -92,17 +39,17 @@ var (
           "type": "string"
         },
         {
-          "internalType": "address",
-          "name": "user",
-          "type": "address"
+          "internalType": "bytes",
+          "name": "input",
+          "type": "bytes"
         }
       ],
-      "name": "balanceOf",
+      "name": "callFunc",
       "outputs": [
         {
-          "internalType": "uint256",
+          "internalType": "bytes",
           "name": "",
-          "type": "uint256"
+          "type": "bytes"
         }
       ],
       "stateMutability": "view",
@@ -116,9 +63,68 @@ var (
           "type": "string"
         }
       ],
-      "name": "buy",
-      "outputs": [],
-      "stateMutability": "payable",
+      "name": "getCode",
+      "outputs": [
+        {
+          "internalType": "string",
+          "name": "",
+          "type": "string"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "name",
+          "type": "string"
+        }
+      ],
+      "name": "getGas",
+      "outputs": [
+        {
+          "internalType": "uint64",
+          "name": "",
+          "type": "uint64"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "name",
+          "type": "string"
+        }
+      ],
+      "name": "getInfo",
+      "outputs": [
+        {
+          "internalType": "string",
+          "name": "code",
+          "type": "string"
+        },
+        {
+          "internalType": "uint64",
+          "name": "gas",
+          "type": "uint64"
+        },
+        {
+          "internalType": "string",
+          "name": "itype",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "otype",
+          "type": "string"
+        }
+      ],
+      "stateMutability": "view",
       "type": "function"
     },
     {
@@ -129,12 +135,12 @@ var (
           "type": "string"
         },
         {
-          "internalType": "uint256",
-          "name": "conversionRate",
-          "type": "uint256"
+          "internalType": "uint64",
+          "name": "_gas",
+          "type": "uint64"
         }
       ],
-      "name": "createVoucher",
+      "name": "updataGas",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -145,39 +151,35 @@ var (
           "internalType": "string",
           "name": "name",
           "type": "string"
-        }
-      ],
-      "name": "getVoucherInfo",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "conversionRate",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
+        },
         {
           "internalType": "string",
-          "name": "name",
+          "name": "code",
           "type": "string"
         },
         {
-          "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
+          "internalType": "uint64",
+          "name": "gas",
+          "type": "uint64"
+        },
+        {
+          "internalType": "string",
+          "name": "itype",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "otype",
+          "type": "string"
         }
       ],
-      "name": "use",
+      "name": "uploadCode",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
     }
-  ]`
-)
+  ]
+`
 
 // Public attributes
 var (
@@ -192,8 +194,12 @@ func init() {
 	if err != nil {
 		log.Error("Load codestorage ABI err")
 	}
-	err = loadFromFile(algoInfoPath)
-	if err != nil {
+
+	// Load stashed map
+	if err = loadFromFile(algoInfoPath); err != nil {
 		log.Error("Load upgrade algorithm map error:", err)
 	}
+
+	// Create directory
+	directoryInit()
 }

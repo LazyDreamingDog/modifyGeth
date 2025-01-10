@@ -1,11 +1,8 @@
 package voucher
 
 import (
-	"fmt"
-
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/holiman/uint256"
 )
@@ -83,35 +80,34 @@ func NewBoundMethod(contractAddress *common.Address, abi *abi.ABI, methodName st
 
 // Execute executes the method with the given EVM and unpacks the return value into result.
 // Result need to match the contract return type, and is a pointer.
-func (bm *BoundMethod) Execute(evm *vm.EVM, result interface{}, caller *common.Address, value *uint256.Int, args ...interface{}) (gasUsed uint64, err error) {
-	fmt.Printf("call contract:%s, methodName:%s\n", bm.contractAddress, bm.Name())
-	var output []byte
-	gasRemain := uint64(0)
+func (bm *BoundMethod) Execute(evm *vm.EVM, result interface{}, caller *common.Address, value *uint256.Int, args ...interface{}) (uint64, error) {
+	// fmt.Printf("call contract:%s, methodName:%s\n", bm.contractAddress, bm.Name())
+
 	// Encode input
 	input, err := bm.encodeCall(args...)
 	if err != nil {
-		fmt.Println("Error invoking evm function: can't encode method arguments", "args", args, "err", err)
-		return
+		return 0, err
 	}
-	// execute triage based on read or write
+
+	// Execute triage based on read or write
+	var output []byte
+	gasRemain := uint64(0)
 	if bm.readOnly {
 		output, gasRemain, err = evm.StaticCall(vm.AccountRef(*caller), *bm.contractAddress, input, bm.maxGas)
 	} else {
 		output, gasRemain, err = evm.Call(vm.AccountRef(*caller), *bm.contractAddress, input, bm.maxGas, value)
 	}
+
 	// Output decode
 	if err != nil {
-		// Execution reverted
-		fmt.Println("Error invoking evm function: EVM call failure!", "Err:", err, "message:", hexutil.Encode(output))
-		return
+		return 0, err
 	}
+
 	if len(output) != 0 {
 		if err = bm.decodeResult(result, output); err != nil {
-			fmt.Println("Error invoking evm function: can't unpack result!", "Err:", err)
-			return
+			return 0, err
 		}
 	}
-	gasUsed = bm.maxGas - gasRemain
 	// fmt.Println("EVM call successful", "input", hexutil.Encode(input), "output", hexutil.Encode(output))
-	return
+	return bm.maxGas - gasRemain, nil
 }

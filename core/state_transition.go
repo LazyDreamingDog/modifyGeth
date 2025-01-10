@@ -188,7 +188,7 @@ func (m *Message) ParseVoucher() {
 		m.tokenName = string(m.Data[3:i])
 		// Delete prefix
 		m.Data = m.Data[23:]
-		log.Info("Tx use %s to pay Gas,contract address is %s!\n", m.tokenName, m.FeeCurrency)
+		log.Info(fmt.Sprintf("Tx use %s to pay Gas,contract address is %s!\n", m.tokenName, m.FeeCurrency))
 	} else {
 		log.Info("Tx is not use voucher to pay gas")
 	}
@@ -339,13 +339,15 @@ func (st *StateTransition) buyGas() error {
 	if st.msg.FeeCurrency != nil {
 		// Using voucher to buy gas
 		balance := big.NewInt(0)
-		BalanceOfGas, _ = voucher.BalanceOf.Execute(st.evm, &balance, &st.msg.From, uint256.NewInt(0), st.msg.tokenName, st.msg.From)
+		BalanceOfGas, err := voucher.BalanceOf.Execute(st.evm, &balance, &st.msg.From, uint256.NewInt(0), st.msg.tokenName, st.msg.From)
+		if err != nil {
+			return err
+		}
 		// Legitimacy check
 		if balance.Cmp(balanceCheck) < 0 {
-			fmt.Println("Balance of account is insufficient!")
-			return fmt.Errorf("%w: address %v have %v want %v", ErrInsufficientFunds, st.msg, balance, balanceCheck)
+			return fmt.Errorf("%w: address %v have %v want %v", ErrInsufficientFunds, st.msg.From, balance, balanceCheck)
 		} else {
-			fmt.Printf("Call BalanceOf use %v unit of gas\n", BalanceOfGas)
+			log.Info(fmt.Sprintf("Call BalanceOf use %v unit of gas\n", BalanceOfGas))
 		}
 	} else {
 		// At first, use interest to pay gas.
@@ -700,17 +702,25 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 		gasUsedFee.SetUint64(st.gasUsed())
 		gasUsedFee.Mul(gasUsedFee, st.msg.GasPrice)
 
-		var flag bool
 		// Simulation of execution to calculate the cost of Gas consumed
+		var flag bool
+		var useMethodGas uint64
 		snapShot := st.state.Snapshot()
-		useMethodGas, _ := voucher.Use.Execute(st.evm, &flag, &st.msg.From, uint256.NewInt(0), st.msg.tokenName, gasUsedFee)
+		useMethodGas, err := voucher.Use.Execute(st.evm, &flag, &st.msg.From, uint256.NewInt(0), st.msg.tokenName, gasUsedFee)
+		if err != nil {
+			return nil, err
+		} else {
+			log.Info("Simulation call voucher use method success! Prepare to rollup")
+		}
 		st.state.RevertToSnapshot(snapShot)
+		log.Info("Rollup success")
 
 		// Dedections from non-native token account, including the gas of call method use
 		gasUsedFee.Add(gasUsedFee, new(big.Int).SetUint64(useMethodGas))
 		if _, err := voucher.Use.Execute(st.evm, &flag, &st.msg.From, uint256.NewInt(0), st.msg.tokenName, gasUsedFee); err != nil {
 			return nil, err
 		}
+
 	} else {
 		// Using Native to pay gas, need to refund gas fee.
 		if !rules.IsLondon {
