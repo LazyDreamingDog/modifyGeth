@@ -1,7 +1,8 @@
-package rpc_punkos
+package punkos
 
 import (
 	"context"
+	"log"
 	"math/big"
 	"testing"
 	"time"
@@ -10,25 +11,50 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"io/ioutil"
+	"path/filepath"
 )
 
-var sender = `{"address":"72c5da1e05cc7bba112a1cf55982bb63ca026bbd","crypto":{"cipher":"aes-128-ctr","ciphertext":"3fdfe9d5bcd265b3e27025a791d2ffdc567522b45eb15492d6381f0a9d097b77","cipherparams":{"iv":"2c12e45fc166d2563c1f3ba81efaf761"},"kdf":"scrypt","kdfparams":{"dklen":32,"n":262144,"p":1,"r":8,"salt":"f7b46acde1ec6e498c7591126789b0cdffc2f6d5268ea6f23771b602135eb656"},"mac":"bd757c7c7cafb42ca674b4cc377a80b45fc20629a5f8f7ce76d81cec0194c592"},"id":"bcec0e55-76b6-4760-8b9f-c256fff86964","version":3}`
-var receiver = "0xd1b194ac5281ccdb83d3058e034ca676f54269fe"
+// 公共测试账号
+var sender, receiver *keystore.Key
+
+// rpc url
+var rpcUrl = "http://localhost:36054"
+
+func init() {
+	senderKeyPath := filepath.Join("..", "testData", "UTC--2025-01-21T10-52-30.971266200Z--f61bdf96dc06685065337b76659bebac9cbb53bb")
+	receiverKeyPath := filepath.Join("..", "testData", "UTC--2025-01-21T09-25-14.260753200Z--d1b194ac5281ccdb83d3058e034ca676f54269fe")
+
+	senderKeyJson, err := ioutil.ReadFile(senderKeyPath)
+	if err != nil {
+		log.Fatalf("Failed to read sender key file: %v", err)
+	}
+
+	receiverKeyJson, err := ioutil.ReadFile(receiverKeyPath)
+	if err != nil {
+		log.Fatalf("Failed to read receiver key file: %v", err)
+	}
+
+	sender, err = keystore.DecryptKey(senderKeyJson, "123456")
+	if err != nil {
+		log.Fatalf("Failed to decrypt sender key: %v", err)
+	}
+
+	receiver, err = keystore.DecryptKey(receiverKeyJson, "123456")
+	if err != nil {
+		log.Fatalf("Failed to decrypt receiver key: %v", err)
+	}
+}
 
 func TestSendTransaction(t *testing.T) {
-	client, err := ethclient.Dial("http://localhost:36054")
+	client, err := ethclient.Dial(rpcUrl)
 	if err != nil {
 		t.Fatalf("Failed to connect to the Ethereum client: %v", err)
 	}
 
 	// JSON string containing the key
-	// Decrypt the key
-	key, err := keystore.DecryptKey([]byte(sender), "423785")
-	if err != nil {
-		t.Fatalf("Failed to decrypt key: %v", err)
-	}
-	privateKey := key.PrivateKey
-	accountAddress := key.Address
+	privateKey := sender.PrivateKey
+	accountAddress := sender.Address
 
 	// Query the initial balance
 	initialBalance, err := client.BalanceAt(context.Background(), accountAddress, nil)
@@ -55,7 +81,7 @@ func TestSendTransaction(t *testing.T) {
 	}
 
 	// Create the transaction
-	toAddress := common.HexToAddress(receiver)
+	toAddress := common.HexToAddress(receiver.Address.Hex())
 	value := big.NewInt(100000000000000000) // 1 ETH
 	gasLimit := uint64(1000000)             // Adjusted gas limit
 	tx := types.NewTransaction(nonce, toAddress, value, gasLimit, gasPrice, nil)

@@ -1,4 +1,4 @@
-package rpc_punkos
+package punkos
 
 import (
 	"bytes"
@@ -65,12 +65,11 @@ func sendRPCRequest(url, method string, params []interface{}) (*RPCResponse, err
 	return &rpcResp, nil
 }
 
-var url = "http://localhost:36054"
-var address = "0x72c5da1e05cc7bba112a1cf55982bb63ca026bbd"
 var block = "latest"
 
 func TestGetBalance(t *testing.T) {
-	rpcResp, err := sendRPCRequest(url, "eth_getBalance", []interface{}{address, block})
+	address := sender.Address.Hex()
+	rpcResp, err := sendRPCRequest(rpcUrl, "eth_getBalance", []interface{}{address, block})
 	if err != nil {
 		t.Fatalf("Failed to send request: %v", err)
 	}
@@ -88,7 +87,8 @@ func TestGetBalance(t *testing.T) {
 }
 
 func TestGetStateDb(t *testing.T) {
-	rpcResp, err := sendRPCRequest(url, "eth_getStateDbTest", []interface{}{address, block})
+	address := sender.Address.Hex()
+	rpcResp, err := sendRPCRequest(rpcUrl, "eth_getStateDbTest", []interface{}{address, block})
 	if err != nil {
 		t.Fatalf("Failed to send request: %v", err)
 	}
