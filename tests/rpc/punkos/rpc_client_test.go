@@ -86,9 +86,10 @@ func TestGetBalance(t *testing.T) {
 	t.Logf("Balance: %s", balanceInt)
 }
 
-func TestGetStateDb(t *testing.T) {
+// 测试获取利息信息
+func TestGetInterest(t *testing.T) {
 	address := sender.Address.Hex()
-	rpcResp, err := sendRPCRequest(rpcUrl, "eth_getStateDbTest", []interface{}{address, block})
+	rpcResp, err := sendRPCRequest(rpcUrl, "eth_getInterest", []interface{}{address, block})
 	if err != nil {
 		t.Fatalf("Failed to send request: %v", err)
 	}

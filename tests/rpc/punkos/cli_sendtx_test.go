@@ -86,6 +86,8 @@ func TestSendTransaction(t *testing.T) {
 	gasLimit := uint64(1000000)             // Adjusted gas limit
 	tx := types.NewTransaction(nonce, toAddress, value, gasLimit, gasPrice, nil)
 
+	// TODO 发送添加Interest的交易
+
 	// Sign the transaction
 	chainID, err := client.NetworkID(context.Background())
 	if err != nil {
