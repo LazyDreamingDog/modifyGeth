@@ -20,12 +20,15 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+
+	// "log"
 	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/metrics"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/trie/trienode"
@@ -579,6 +582,18 @@ func (s *stateObject) Interest() *uint256.Int {
 	return s.data.Interest
 }
 
+func (s *stateObject) ContractCallCount() *big.Int {
+	return s.data.ContractCallCount
+}
+
+func (s *stateObject) TotalNumberOfGas() *uint256.Int {
+	return s.data.TotalNumberOfGas
+}
+
+func (s *stateObject) TotalValueTx() *uint256.Int {
+	return s.data.TotalValueTx
+}
+
 func (s *stateObject) Nonce() uint64 {
 	return s.data.Nonce
 }
@@ -601,4 +616,116 @@ func (s *stateObject) setSecurityLevel(level uint64) {
 
 func (s *stateObject) SecurityLevel() uint64 {
 	return s.data.SecurityLevel
+}
+
+func (s *stateObject) SetContractCallCount(amout *big.Int) {
+	s.db.journal.append(contractCallCountChange{
+		account:  &s.address,
+		prevalue: s.data.ContractCallCount,
+	})
+	s.setContractCallCount(amout)
+}
+
+func (s *stateObject) setContractCallCount(amount *big.Int) {
+	s.data.ContractCallCount = amount
+}
+
+func (s *stateObject) AddContractCallCount(amount *big.Int) {
+	if amount.Sign() == 0 {
+		log.Info("ContractCallCount 被判定为非正数，被迫返回", "判定值", amount)
+		return
+	}
+	if s.ContractCallCount() == nil {
+		log.Warn("ContractCallCount 为空，进行初始化")
+		s.SetContractCallCount(big.NewInt(0))
+	}
+	s.SetContractCallCount(new(big.Int).Add(s.ContractCallCount(), amount))
+}
+
+func (s *stateObject) GetContractCallCount() *big.Int {
+	callCount := s.getContractCallCount()
+	if callCount != nil {
+		return callCount
+	}
+	return big.NewInt(0)
+}
+
+func (s *stateObject) getContractCallCount() *big.Int {
+	return s.data.ContractCallCount
+}
+
+// TotalNumberOfGas
+
+func (s *stateObject) setTotalNumberOfGas(amount *uint256.Int) {
+	s.data.TotalNumberOfGas = amount
+}
+
+func (s *stateObject) SetTotalNumberOfGas(amount *uint256.Int) {
+	s.db.journal.append(totalNumberOfGasChange{
+		account:  &s.address,
+		prevalue: s.data.TotalNumberOfGas,
+	})
+	s.setTotalNumberOfGas(amount)
+}
+
+func (s *stateObject) AddTotalNumberOfGas(amount *uint256.Int) {
+	if amount.Sign() == 0 {
+		log.Info("TotalNumberOfGas 被判定为非正数，被迫返回", "判定值", amount)
+		return
+	}
+	if s.TotalNumberOfGas() == nil {
+		log.Warn("TotalNumberOfGas 为空，进行初始化")
+		s.setTotalNumberOfGas(uint256.NewInt(0))
+	}
+	s.SetTotalNumberOfGas(new(uint256.Int).Add(s.TotalNumberOfGas(), amount))
+}
+
+func (s *stateObject) GetTotalNumberOfGas() *uint256.Int {
+	gas := s.getTotalNumberOfGas()
+	if gas != nil {
+		return gas
+	}
+	return uint256.NewInt(0)
+}
+
+func (s *stateObject) getTotalNumberOfGas() *uint256.Int {
+	return s.data.TotalNumberOfGas
+}
+
+// total value of a contract transfer
+
+func (s *stateObject) setTotalValueTx(amount *uint256.Int) {
+	s.data.TotalValueTx = amount
+}
+
+func (s *stateObject) SetTotalValueTx(amount *uint256.Int) {
+	s.db.journal.append(totalValueTxChange{
+		account:  &s.address,
+		prevalue: s.data.TotalValueTx,
+	})
+	s.setTotalValueTx(amount)
+}
+
+func (s *stateObject) AddTotalValueTx(amount *uint256.Int) {
+	if amount.Sign() == 0 {
+		log.Info("TotalValueTx 被判定为非正数，被迫返回", "判定值", amount)
+		return
+	}
+	if s.TotalValueTx() == nil {
+		log.Warn("TotalValueTx 为空，进行初始化")
+		s.setTotalValueTx(uint256.NewInt(0))
+	}
+	s.SetTotalValueTx(new(uint256.Int).Add(s.TotalValueTx(), amount))
+}
+
+func (s *stateObject) getTotalValueTx() *uint256.Int {
+	return s.data.TotalValueTx
+}
+
+func (s *stateObject) GetTotalValueTx() *uint256.Int {
+	valueTx := s.getTotalValueTx()
+	if valueTx != nil {
+		return valueTx
+	}
+	return uint256.NewInt(0)
 }

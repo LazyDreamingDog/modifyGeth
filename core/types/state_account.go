@@ -30,24 +30,30 @@ import (
 // StateAccount is the Ethereum consensus representation of accounts.
 // These objects are stored in the main account trie.
 type StateAccount struct {
-	Nonce           uint64
-	Balance         *uint256.Int
-	Root            common.Hash // merkle root of the storage trie
-	CodeHash        []byte
-	SecurityLevel   uint64 // security level range 1-5. 0 means the account is locked
-	Interest        *uint256.Int
-	LastBlockNumber *big.Int // The block number where the interest was last calculated
+	Nonce             uint64
+	Balance           *uint256.Int
+	Root              common.Hash // merkle root of the storage trie
+	CodeHash          []byte
+	SecurityLevel     uint64 // security level range 1-5. 0 means the account is locked
+	Interest          *uint256.Int
+	LastBlockNumber   *big.Int // The block number where the interest was last calculated
+	TotalNumberOfGas  *uint256.Int
+	ContractCallCount *big.Int
+	TotalValueTx      *uint256.Int
 }
 
 // NewEmptyStateAccount constructs an empty state account.
 func NewEmptyStateAccount() *StateAccount {
 	return &StateAccount{
-		Balance:         new(uint256.Int),
-		Root:            EmptyRootHash,
-		CodeHash:        EmptyCodeHash.Bytes(),
-		SecurityLevel:   1,
-		Interest:        uint256.NewInt(0),
-		LastBlockNumber: big.NewInt(0),
+		Balance:           new(uint256.Int),
+		Root:              EmptyRootHash,
+		CodeHash:          EmptyCodeHash.Bytes(),
+		SecurityLevel:     1,
+		Interest:          uint256.NewInt(0),
+		LastBlockNumber:   big.NewInt(0),
+		ContractCallCount: big.NewInt(0),
+		TotalNumberOfGas:  uint256.NewInt(0),
+		TotalValueTx:      uint256.NewInt(0),
 	}
 }
 
@@ -58,13 +64,16 @@ func (acct *StateAccount) Copy() *StateAccount {
 		balance = new(uint256.Int).Set(acct.Balance)
 	}
 	return &StateAccount{
-		Nonce:           acct.Nonce,
-		Balance:         balance,
-		Root:            acct.Root,
-		CodeHash:        common.CopyBytes(acct.CodeHash),
-		SecurityLevel:   acct.SecurityLevel,
-		Interest:        acct.Interest,
-		LastBlockNumber: acct.LastBlockNumber,
+		Nonce:             acct.Nonce,
+		Balance:           balance,
+		Root:              acct.Root,
+		CodeHash:          common.CopyBytes(acct.CodeHash),
+		SecurityLevel:     acct.SecurityLevel,
+		Interest:          acct.Interest,
+		LastBlockNumber:   acct.LastBlockNumber,
+		ContractCallCount: acct.ContractCallCount,
+		TotalNumberOfGas:  acct.TotalNumberOfGas,
+		TotalValueTx:      acct.TotalValueTx,
 	}
 }
 
@@ -72,23 +81,29 @@ func (acct *StateAccount) Copy() *StateAccount {
 // with a byte slice. This format can be used to represent full-consensus format
 // or slim format which replaces the empty root and code hash as nil byte slice.
 type SlimAccount struct {
-	Nonce           uint64
-	Balance         *uint256.Int
-	Root            []byte // Nil if root equals to types.EmptyRootHash
-	CodeHash        []byte // Nil if hash equals to types.EmptyCodeHash
-	SecurityLevel   uint64
-	Interest        *uint256.Int
-	LastBlockNumber *big.Int
+	Nonce             uint64
+	Balance           *uint256.Int
+	Root              []byte // Nil if root equals to types.EmptyRootHash
+	CodeHash          []byte // Nil if hash equals to types.EmptyCodeHash
+	SecurityLevel     uint64
+	Interest          *uint256.Int
+	LastBlockNumber   *big.Int
+	ContractCallCount *big.Int
+	TotalNumberOfGas  *uint256.Int
+	TotalValueTx      *uint256.Int
 }
 
 // SlimAccountRLP encodes the state account in 'slim RLP' format.
 func SlimAccountRLP(account StateAccount) []byte {
 	slim := SlimAccount{
-		Nonce:           account.Nonce,
-		Balance:         account.Balance,
-		SecurityLevel:   account.SecurityLevel,
-		Interest:        account.Interest,
-		LastBlockNumber: account.LastBlockNumber,
+		Nonce:             account.Nonce,
+		Balance:           account.Balance,
+		SecurityLevel:     account.SecurityLevel,
+		Interest:          account.Interest,
+		LastBlockNumber:   account.LastBlockNumber,
+		ContractCallCount: account.ContractCallCount,
+		TotalNumberOfGas:  account.TotalNumberOfGas,
+		TotalValueTx:      account.TotalValueTx,
 	}
 	if account.Root != EmptyRootHash {
 		slim.Root = account.Root[:]
@@ -115,6 +130,9 @@ func FullAccount(data []byte) (*StateAccount, error) {
 	account.SecurityLevel = slim.SecurityLevel
 	account.LastBlockNumber = slim.LastBlockNumber
 	account.Interest = slim.Interest
+	account.ContractCallCount = slim.ContractCallCount
+	account.TotalNumberOfGas = slim.TotalNumberOfGas
+	account.TotalValueTx = slim.TotalValueTx
 	// Interpret the storage root and code hash in slim format.
 	if len(slim.Root) == 0 {
 		account.Root = EmptyRootHash
