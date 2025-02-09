@@ -97,6 +97,11 @@ func (m *TestBackend) parseContractAddress() *common.Address {
 	}
 }
 
+func (m *TestBackend) newSigner() types.Signer {
+	header := m.bc.CurrentBlock()
+	return types.MakeSigner(m.bc.Config(), header.Number, header.Time)
+}
+
 func (m *TestBackend) CreateMiner() *miner.Miner {
 	// ! EtherBase is necessary
 	minerConfig := miner.Config{

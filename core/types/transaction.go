@@ -623,11 +623,18 @@ func (tx *Transaction) PublicKey() []byte {
 	return []byte{}
 }
 
-func (tx *Transaction) PublicKeyIndex() uint64 {
+func (tx *Transaction) PostAddress() *common.Address {
 	if dynamicCryptoTx, ok := tx.inner.(*DynamicCryptoTx); ok {
-		return dynamicCryptoTx.publicKeyIndex()
+		return dynamicCryptoTx.postAddress()
 	}
-	return 0
+	return &common.Address{}
+}
+
+func (tx *Transaction) HashExcludePostQumSign() common.Hash {
+	if dynamicCryptoTx, ok := tx.inner.(*DynamicCryptoTx); ok {
+		return dynamicCryptoTx.hashExcludeSign()
+	}
+	return common.Hash{}
 }
 
 func (tx *Transaction) SystemFlag() uint64 {

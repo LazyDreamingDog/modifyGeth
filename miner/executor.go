@@ -20,6 +20,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/txpool"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/event"
+	"github.com/ethereum/go-ethereum/gethassist/postquan"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/proto/pb"
@@ -194,6 +195,7 @@ type executorClient struct {
 // need add a loop routine to sendTx to consensus layer, when execCh has new txs
 func (ec *executorClient) sendTx(tx *types.Transaction, nid uint64) (*pb.Empty, error) {
 	log.Info("begin send tx to consensus")
+	fmt.Println("Begin send tx to consensus")
 	data, err := tx.MarshalBinary()
 	if err != nil {
 		return nil, err
@@ -391,6 +393,10 @@ func newExecutor(config *Config, chainConfig *params.ChainConfig, engine consens
 	executor.server = s // then we can handle the server
 
 	executor.serving.Store(false)
+
+	// Event subsribe, using @executor.wg to control
+	postQuanSub := executor.mux.Subscribe(core.PostQuanEvent{})
+	go postquan.BindPostQuantumEvents(postQuanSub, executor.exitCh)
 
 	// start loop
 	executor.wg.Add(3)
@@ -841,10 +847,12 @@ func (e *executor) executeNewTxBatch(timestamp int64, txs types.Transactions, le
 		}
 	}
 
-	// Split transactions into normal and external txs based on destination address
-	var normalTxs, externalTxs types.Transactions
+	// Split transactions into normal, external and pre-quantum txs based on destination address
+	var normalTxs, externalTxs, postQuanTxs types.Transactions
 	for _, tx := range txs {
-		if tx.To() != nil && *tx.To() == params.ExternalExecutionAddress {
+		if tx.Type() == types.DynamicCryptoTxType {
+			postQuanTxs = append(postQuanTxs, tx)
+		} else if tx.To() != nil && *tx.To() == params.ExternalExecutionAddress {
 			externalTxs = append(externalTxs, tx)
 		} else {
 			normalTxs = append(normalTxs, tx)
@@ -883,10 +891,40 @@ func (e *executor) executeNewTxBatch(timestamp int64, txs types.Transactions, le
 	}
 
 	var wg sync.WaitGroup
+
+	verifiedTxCh := make(chan types.Transactions)
+	// Post-quantum tx event, inform service to verify
+	if len(postQuanTxs) != 0 {
+		wg.Add(1)
+		e.mux.Post(core.PostQuanEvent{
+			Txs:           postQuanTxs,
+			Signer:        work.signer,
+			VerifiedTxsCh: verifiedTxCh,
+			State:         work.state,
+		})
+	}
+	fmt.Println("Post txs to gethassist")
+
+	// When transactions are validated, a goroutine starts to execute tx concurrently
+	go func() {
+		for txs := range verifiedTxCh {
+			go func() {
+				fmt.Printf("wg: %v\n", wg)
+				fmt.Println("Execute post-quantum tx")
+				// Post-quantum txs execution
+				e.executeTransactions(work, txs, &wg)
+			}()
+		}
+	}()
+
+	// Normale and Off-chain(external) txs execution
 	wg.Add(2)
 	go e.executeTransactions(work, normalTxs, &wg)
 	go e.executeTransactions(work, externalTxs, &wg)
 	wg.Wait()
+
+	// Close channel will kill goroutine automaticly
+	close(verifiedTxCh)
 	e.writeToChain(work)
 }
 
@@ -932,10 +970,6 @@ func (e *executor) executeTransactions(env *executor_env, txs types.Transactions
 				continue
 			}
 		}
-
-		// Set interest rate and transfer interest rate
-		env.state.SetInterestRate(params.InterestRate)
-		env.state.SetTransferInterestRate(params.TransferInterestRate)
 
 		env.state.SetTxContext(tx.Hash(), env.tcount)
 		logs, err := e.executeTransaction(env, tx)

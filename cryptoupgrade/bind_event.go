@@ -52,6 +52,7 @@ func BindCodeUploaded(client client) {
 	if err != nil {
 		log.Error("Failed to subscribe to logs: %v", err)
 	}
+	defer sub.Unsubscribe()
 
 	for {
 		select {

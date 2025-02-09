@@ -1,0 +1,11 @@
+CREATE libpqmagic_std.a
+ADDLIB /home/teddycode/Desktop/Workspace/crypto-suites/bin/webassembly/cmd/wasm/pqcgo/pqmagic/build-linux/sig/dilithium/std/libpqmagic_dilithium_std.a
+ADDLIB /home/teddycode/Desktop/Workspace/crypto-suites/bin/webassembly/cmd/wasm/pqcgo/pqmagic/build-linux/sig/ml_dsa/std/libpqmagic_ml_dsa_std.a
+ADDLIB /home/teddycode/Desktop/Workspace/crypto-suites/bin/webassembly/cmd/wasm/pqcgo/pqmagic/build-linux/sig/aigis-sig/std/libpqmagic_aigis_sig_std.a
+ADDLIB /home/teddycode/Desktop/Workspace/crypto-suites/bin/webassembly/cmd/wasm/pqcgo/pqmagic/build-linux/sig/slh_dsa/std/libpqmagic_slh_dsa_std.a
+ADDLIB /home/teddycode/Desktop/Workspace/crypto-suites/bin/webassembly/cmd/wasm/pqcgo/pqmagic/build-linux/sig/sphincs-a/std/libpqmagic_sphincs_a_std.a
+ADDLIB /home/teddycode/Desktop/Workspace/crypto-suites/bin/webassembly/cmd/wasm/pqcgo/pqmagic/build-linux/hash/sm3/libsm3.a
+ADDLIB /home/teddycode/Desktop/Workspace/crypto-suites/bin/webassembly/cmd/wasm/pqcgo/pqmagic/build-linux/hash/keccak/libfips202.a
+ADDLIB /home/teddycode/Desktop/Workspace/crypto-suites/bin/webassembly/cmd/wasm/pqcgo/pqmagic/build-linux/utils/librandombytes.a
+SAVE
+END
