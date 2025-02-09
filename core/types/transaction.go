@@ -19,6 +19,7 @@ package types
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"math/big"
 	"sync/atomic"
@@ -630,11 +631,16 @@ func (tx *Transaction) PostAddress() *common.Address {
 	return &common.Address{}
 }
 
-func (tx *Transaction) HashExcludePostQumSign() common.Hash {
+func (tx *Transaction) JsonExcludePostQumSign() ([]byte, error) {
 	if dynamicCryptoTx, ok := tx.inner.(*DynamicCryptoTx); ok {
-		return dynamicCryptoTx.hashExcludeSign()
+		data, err := dynamicCryptoTx.jsonExcludeSign()
+		if err != nil {
+			return nil, err
+		} else {
+			return data, nil
+		}
 	}
-	return common.Hash{}
+	return nil, fmt.Errorf("tx is not dynamicCrypto")
 }
 
 func (tx *Transaction) SystemFlag() uint64 {

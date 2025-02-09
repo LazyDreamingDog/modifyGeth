@@ -58,7 +58,7 @@ func (m *TestBackend) AddTx(tx *types.Transaction) {
 		fmt.Printf("Add tx err: %v\n", errs)
 	}
 	// Wait for consense
-	time.Sleep(30 * time.Second)
+	time.Sleep(1000 * time.Second)
 }
 
 func (m *TestBackend) parseContractAddress() *common.Address {

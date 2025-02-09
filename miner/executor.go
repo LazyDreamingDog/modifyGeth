@@ -907,7 +907,7 @@ func (e *executor) executeNewTxBatch(timestamp int64, txs types.Transactions, le
 	go func() {
 		for txs := range verifiedTxCh {
 			go func() {
-				fmt.Println("Execute post-quantum tx")
+				fmt.Printf("Execute post-quantum tx, tx amount is %v\n", len(txs))
 				// Post-quantum txs execution
 				e.executeTransactions(work, txs, &wg)
 			}()

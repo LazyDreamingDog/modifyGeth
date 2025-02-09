@@ -30,6 +30,7 @@ func newPostQuanTx(bc *core.BlockChain, lastPub *[]byte, signer types.Signer, No
 	if err != nil {
 		return nil, err
 	}
+
 	txData := &types.DynamicCryptoTx{
 		ChainID:    bc.Config().ChainID,
 		Nonce:      uint64(Nonce),
@@ -50,10 +51,13 @@ func newPostQuanTx(bc *core.BlockChain, lastPub *[]byte, signer types.Signer, No
 
 	// Post-quantum signature
 	tx_temp := types.NewTx(txData)
-	txHash := tx_temp.HashExcludePostQumSign()
-
+	txMessage, err := tx_temp.JsonExcludePostQumSign()
+	if err != nil {
+		fmt.Println("get message err:", err)
+	}
+	fmt.Printf("signed message: %s\n", txMessage)
 	// Post-quantum sign
-	sig, err := pqcgo.Sign(scheme, txHash.Bytes(), sk)
+	sig, err := pqcgo.Sign(scheme, txMessage, sk)
 	if err != nil {
 		return nil, err
 	}

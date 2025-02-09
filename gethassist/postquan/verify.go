@@ -37,6 +37,8 @@ func BindPostQuantumEvents(sub *event.TypeMuxSubscription, exitCh <-chan struct{
 				go handleEvent(tx, event.Signer, &verfiedTxs, event.State, &wg)
 			}
 			wg.Wait()
+
+			// Must return even if it is empty, otherwise wg will block the main process
 			event.VerifiedTxsCh <- verfiedTxs
 		case <-exitCh:
 			fmt.Println("Shutting down event listener...")
@@ -54,7 +56,11 @@ func handleEvent(tx *types.Transaction, signer types.Signer, verfiedTxs *types.T
 		return
 	}
 
-	message := tx.HashExcludePostQumSign()
+	message, err := tx.JsonExcludePostQumSign()
+	fmt.Printf("verfied message: %s\n", message)
+	if err != nil {
+		fmt.Printf("get message err: %v\n", err)
+	}
 
 	// Get tx sender's address
 	sender, err := signer.Sender(tx)
@@ -71,7 +77,7 @@ func handleEvent(tx *types.Transaction, signer types.Signer, verfiedTxs *types.T
 	}
 
 	// Verify2: the validity and correctness of signature
-	flag, err := pqcgo.Verify(sheme, tx.SignatureData(), message.Bytes(), tx.PublicKey())
+	flag, err := pqcgo.Verify(sheme, tx.SignatureData(), message, tx.PublicKey())
 	if err != nil {
 		log.Error(fmt.Sprintf("Verify post-quantum tx(%s) error:%v", tx.Hash(), err))
 	} else if !flag {

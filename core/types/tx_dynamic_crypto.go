@@ -2,8 +2,11 @@ package types
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"math/big"
+	"reflect"
+	"sort"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -190,18 +193,75 @@ func (tx *DynamicCryptoTx) decode(input []byte) error {
 }
 
 // Hash used by post-quantum signature.
-func (tx *DynamicCryptoTx) hashExcludeSign() common.Hash {
-	return rlpHash(
-		[]interface{}{
-			tx.ChainID,
-			tx.Nonce,
-			tx.GasTipCap,
-			tx.GasFeeCap,
-			tx.Gas,
-			tx.To,
-			tx.Value,
-			tx.Data,
-			tx.AccessList,
-		},
-	)
+func (tx *DynamicCryptoTx) jsonExcludeSign() ([]byte, error) {
+
+	type dynamciData struct {
+		ChainID   *big.Int        `json:"ChainID"`
+		Nonce     uint64          `json:"Nonce"`
+		GasTipCap *big.Int        `json:"GasTipCap"`
+		GasFeeCap *big.Int        `json:"GasFeeCap"`
+		Gas       uint64          `json:"Gas"`
+		To        *common.Address `json:"To"`
+		Value     *big.Int        `json:"Value"`
+		Data      []byte          `json:"Data"`
+	}
+
+	txInfo := dynamciData{
+		ChainID:   tx.ChainID,
+		Nonce:     tx.Nonce,
+		GasTipCap: tx.GasTipCap,
+		GasFeeCap: tx.GasFeeCap,
+		Gas:       tx.Gas,
+		To:        tx.To,
+		Value:     tx.Value,
+		Data:      tx.Data,
+	}
+	// Serialize based attribute's name
+	return sortedJSONMarshal(txInfo)
+}
+
+// Manually serialize the structure by JSON, sorting by field name
+func sortedJSONMarshal(v interface{}) ([]byte, error) {
+	value := reflect.ValueOf(v)
+	if value.Kind() == reflect.Ptr {
+		value = value.Elem()
+	}
+	if value.Kind() != reflect.Struct {
+		return json.Marshal(v)
+	}
+	// Get struct's type
+	typ := value.Type()
+	// Store attributes contained in struct
+	fieldNames := make([]string, 0, typ.NumField())
+	fieldValues := make(map[string]interface{})
+	for i := 0; i < typ.NumField(); i++ {
+		field := typ.Field(i)
+		// Get JSON tag in struct: if not given will be attribute name
+		tag := field.Tag.Get("json")
+		if tag == "" {
+			tag = field.Name
+		}
+		// Get attribute's value
+		fieldValues[tag] = value.Field(i).Interface()
+		fieldNames = append(fieldNames, tag)
+	}
+	// Sort
+	sort.Strings(fieldNames)
+	// Simulate the sorted structure
+	result := make(map[string]interface{})
+	for _, name := range fieldNames {
+		result[name] = fieldValues[name]
+	}
+	// Serialize
+	return json.Marshal(result)
+}
+
+// Helper function that finds the position of a character in a string
+func idxOr(s string, c byte, or int) int {
+	for i := 0; i < len(s); i++ {
+		if s[i] == c {
+			return i
+		}
+	}
+	return or
 }
