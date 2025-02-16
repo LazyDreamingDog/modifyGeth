@@ -7,12 +7,13 @@ import (
 	"testing"
 	"time"
 
+	"io/ioutil"
+	"path/filepath"
+
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"io/ioutil"
-	"path/filepath"
 )
 
 // 公共测试账号
@@ -46,6 +47,29 @@ func init() {
 	}
 }
 
+// 测试查询交易&区块
+func TestGetTransactionAndBlock(t *testing.T) {
+	client, err := ethclient.Dial(rpcUrl)
+	if err != nil {
+		t.Fatalf("Failed to connect to the Ethereum client: %v", err)
+	}
+
+	// Get the genisis block
+	block, err := client.BlockByNumber(context.Background(), common.Big0)
+	if err != nil {
+		t.Fatalf("Failed to get genisis block: %v", err)
+	}
+	t.Logf("Block Number: %s", block.Number().String())
+
+	// Get the genisis transaction
+	transactions, err := client.TransactionInBlock(context.Background(), block.Hash(), 0)
+	if err != nil {
+		t.Fatalf("Failed to get transaction by block: %v", err)
+	}
+	t.Logf("Transaction Hash: %s", transactions.Hash().String())
+}
+
+// 测试查询余额&发送交易
 func TestSendTransaction(t *testing.T) {
 	client, err := ethclient.Dial(rpcUrl)
 	if err != nil {
