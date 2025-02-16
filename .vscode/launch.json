@@ -1,0 +1,59 @@
+{
+    // 使用 IntelliSense 了解相关属性。 
+    // 悬停以查看现有属性的描述。
+    // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "GethInit",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/cmd/geth",
+            "args": [
+                "--datadir",
+                "${workspaceFolder}/build/data/",
+                "init",
+                "${workspaceFolder}/build/config/genesis.json"
+            ]
+        },
+        {
+            "name": "GethRun",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/cmd/geth",
+            "args": [
+                "--datadir",
+                "${workspaceFolder}/build/data/",
+                "--http",
+                "--http.corsdomain=*",
+                "--http.port",
+                "36054",
+                "--http.addr",
+                "0.0.0.0",
+                "--http.api",
+                "web3,eth,debug,personal,net,miner,admin",
+                "--http.vhosts=*",
+                "--allow-insecure-unlock",
+                "--vmdebug",
+                "--port",
+                "30306",
+                "--unlock",
+                "0xb0725bDd29091782aaDD05D693370408F46174db",
+                "--authrpc.port",
+                "8553",
+                "--miner.etherbase",
+                "0xf61bdf96dc06685065337b76659bebac9cbb53bb"
+            ]
+        },
+        {
+            "name": "TestRPCClient",
+            "type": "go",
+            "request": "launch",
+            "mode": "test",
+            "program": "${workspaceFolder}/tests/rpc/punkos",
+            "args": []
+        }
+    ]
+}

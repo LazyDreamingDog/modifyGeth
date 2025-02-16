@@ -39,7 +39,7 @@ profile.cov
 .idea
 
 # VS Code
-.vscode
+# .vscode
 
 # dashboard
 /dashboard/assets/flow-typed
