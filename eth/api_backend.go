@@ -40,6 +40,7 @@ import (
 	"github.com/ethereum/go-ethereum/miner"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/holiman/uint256"
 )
 
 // EthAPIBackend implements ethapi.Backend and tracers.Backend for full nodes
@@ -48,6 +49,7 @@ type EthAPIBackend struct {
 	allowUnprotectedTxs bool
 	eth                 *Ethereum
 	gpo                 *gasprice.Oracle
+	engine              consensus.Engine
 }
 
 // ChainConfig returns the active chain configuration.
@@ -437,3 +439,184 @@ func (b *EthAPIBackend) StateAtBlock(ctx context.Context, block *types.Block, re
 func (b *EthAPIBackend) StateAtTransaction(ctx context.Context, block *types.Block, txIndex int, reexec uint64) (*core.Message, vm.BlockContext, *state.StateDB, tracers.StateReleaseFunc, error) {
 	return b.eth.stateAtTransaction(ctx, block, txIndex, reexec)
 }
+
+// GetPowDifficultyByNumberOrHash 返回指定区块的PowDifficulty
+func (b *EthAPIBackend) GetPowDifficultyByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (*big.Int, error) {
+	// 首先获取header
+	header, err := b.HeaderByNumberOrHash(ctx, blockNrOrHash)
+	if err != nil {
+		return nil, err
+	}
+
+	// 检查PowDifficulty是否存在
+	if header.PowDifficulty == nil {
+		return nil, errors.New("pow difficulty not found for this block")
+	}
+
+	// 返回PowDifficulty的副本以避免修改原始值
+	return new(big.Int).Set(header.PowDifficulty), nil
+}
+
+// GetPowGasByNumberOrHash 返回指定区块的PowGas
+func (b *EthAPIBackend) GetPowGasByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (uint64, error) {
+	header, err := b.HeaderByNumberOrHash(ctx, blockNrOrHash)
+	if err != nil {
+		return 0, err
+	}
+	// uint64类型没有nil值，但我们可以检查是否为0来表示未设置
+	if header.PowGas == 0 {
+		return 0, errors.New("pow gas not found for this block")
+	}
+	return header.PowGas, nil
+}
+
+// GetPowPriceByNumberOrHash 返回指定区块的PowPrice
+func (b *EthAPIBackend) GetPowPriceByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (*big.Int, error) {
+	header, err := b.HeaderByNumberOrHash(ctx, blockNrOrHash)
+	if err != nil {
+		return nil, err
+	}
+	if header.PowPrice == nil {
+		return nil, errors.New("pow price not found for this block")
+	}
+	return new(big.Int).Set(header.PowPrice), nil
+}
+
+// GetAvgRatioNumeratorByNumberOrHash 返回指定区块的AvgRatioNumerator
+func (b *EthAPIBackend) GetAvgRatioNumeratorByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (uint64, error) {
+	header, err := b.HeaderByNumberOrHash(ctx, blockNrOrHash)
+	if err != nil {
+		return 0, err
+	}
+	if header.AvgRatioNumerator == 0 {
+		return 0, errors.New("avg ratio numerator not found for this block")
+	}
+	return header.AvgRatioNumerator, nil
+}
+
+// GetAvgRatioDenominatorByNumberOrHash 返回指定区块的AvgRatioDenominator
+func (b *EthAPIBackend) GetAvgRatioDenominatorByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (uint64, error) {
+	header, err := b.HeaderByNumberOrHash(ctx, blockNrOrHash)
+	if err != nil {
+		return 0, err
+	}
+	if header.AvgRatioDenominator == 0 {
+		return 0, errors.New("avg ratio denominator not found for this block")
+	}
+	return header.AvgRatioDenominator, nil
+}
+
+// GetAvgGasNumeratorByNumberOrHash 返回指定区块的AvgGasNumerator
+func (b *EthAPIBackend) GetAvgGasNumeratorByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (uint64, error) {
+	header, err := b.HeaderByNumberOrHash(ctx, blockNrOrHash)
+	if err != nil {
+		return 0, err
+	}
+	if header.AvgGasNumerator == 0 {
+		return 0, errors.New("avg gas numerator not found for this block")
+	}
+	return header.AvgGasNumerator, nil
+}
+
+// GetAvgGasDenominatorByNumberOrHash 返回指定区块的AvgGasDenominator
+func (b *EthAPIBackend) GetAvgGasDenominatorByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (uint64, error) {
+	header, err := b.HeaderByNumberOrHash(ctx, blockNrOrHash)
+	if err != nil {
+		return 0, err
+	}
+	if header.AvgGasDenominator == 0 {
+		return 0, errors.New("avg gas denominator not found for this block")
+	}
+	return header.AvgGasDenominator, nil
+}
+
+// GetPoSLeaderByNumberOrHash 返回指定区块的PoSLeader
+func (b *EthAPIBackend) GetPoSLeaderByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (common.Address, error) {
+	header, err := b.HeaderByNumberOrHash(ctx, blockNrOrHash)
+	if err != nil {
+		return common.Address{}, err
+	}
+	if header.PoSLeader == (common.Address{}) {
+		return common.Address{}, errors.New("pos leader not found for this block")
+	}
+	return header.PoSLeader, nil
+}
+
+// GetPoSVotingByNumberOrHash 返回指定区块的PoSVoting
+func (b *EthAPIBackend) GetPoSVotingByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) ([]byte, error) {
+	header, err := b.HeaderByNumberOrHash(ctx, blockNrOrHash)
+	if err != nil {
+		return nil, err
+	}
+	if len(header.PoSVoting) == 0 {
+		return nil, errors.New("pos voting not found for this block")
+	}
+	return common.CopyBytes(header.PoSVoting), nil
+}
+
+// GetCommitTxLengthByNumberOrHash 返回指定区块的CommitTxLength
+func (b *EthAPIBackend) GetCommitTxLengthByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (uint64, error) {
+	header, err := b.HeaderByNumberOrHash(ctx, blockNrOrHash)
+	if err != nil {
+		return 0, err
+	}
+	if header.CommitTxLength == 0 {
+		return 0, errors.New("commit tx length not found for this block")
+	}
+	return header.CommitTxLength, nil
+}
+
+// GetIncentiveByNumberOrHash 返回指定区块的Incentive
+func (b *EthAPIBackend) GetIncentiveByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (*uint256.Int, error) {
+	header, err := b.HeaderByNumberOrHash(ctx, blockNrOrHash)
+	if err != nil {
+		return nil, err
+	}
+
+	// 检查Incentive是否存在
+	if header.Incentive == nil {
+		return nil, errors.New("incentive not found for this block")
+	}
+
+	// 返回Incentive的副本以避免修改原始值
+	return new(uint256.Int).Set(header.Incentive), nil
+}
+
+// BlockDataReader 定义了获取区块数据的接口
+type BlockDataReader interface {
+	// GetPowDifficulty 返回指定区块的PowDifficulty
+	GetPowDifficultyByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (*big.Int, error)
+
+	// GetPowGas 返回指定区块的PowGas
+	GetPowGasByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (uint64, error)
+
+	// GetPowPrice 返回指定区块的PowPrice
+	GetPowPriceByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (*big.Int, error)
+
+	// GetAvgRatioNumerator 返回指定区块的AvgRatioNumerator
+	GetAvgRatioNumeratorByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (uint64, error)
+
+	// GetAvgRatioDenominator 返回指定区块的AvgRatioDenominator
+	GetAvgRatioDenominatorByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (uint64, error)
+
+	// GetAvgGasNumerator 返回指定区块的AvgGasNumerator
+	GetAvgGasNumeratorByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (uint64, error)
+
+	// GetAvgGasDenominator 返回指定区块的AvgGasDenominator
+	GetAvgGasDenominatorByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (uint64, error)
+
+	// GetPoSLeader 返回指定区块的PoSLeader
+	GetPoSLeaderByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (common.Address, error)
+
+	// GetPoSVoting 返回指定区块的PoSVoting
+	GetPoSVotingByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) ([]byte, error)
+
+	// GetCommitTxLength 返回指定区块的CommitTxLength
+	GetCommitTxLengthByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (uint64, error)
+
+	// GetIncentive 返回指定区块的Incentive
+	GetIncentiveByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (*uint256.Int, error)
+}
+
+// 确保 EthAPIBackend 实现了 BlockDataReader 接口
+var _ BlockDataReader = (*EthAPIBackend)(nil)
