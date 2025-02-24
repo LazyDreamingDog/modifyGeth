@@ -30,6 +30,7 @@ import (
 // StateAccount is the Ethereum consensus representation of accounts.
 // These objects are stored in the main account trie.
 type StateAccount struct {
+
 	Nonce           uint64
 	Balance         *uint256.Int
 	Root            common.Hash // merkle root of the storage trie
@@ -38,11 +39,16 @@ type StateAccount struct {
 	Interest        *uint256.Int
 	LastBlockNumber *big.Int // The block number where the interest was last calculated
 	LastPostQuanPub []byte
+	TotalNumberOfGas  *uint256.Int
+	ContractCallCount *big.Int
+	TotalValueTx      *uint256.Int
+
 }
 
 // NewEmptyStateAccount constructs an empty state account.
 func NewEmptyStateAccount() *StateAccount {
 	return &StateAccount{
+
 		Balance:         new(uint256.Int),
 		Root:            EmptyRootHash,
 		CodeHash:        EmptyCodeHash.Bytes(),
@@ -50,6 +56,10 @@ func NewEmptyStateAccount() *StateAccount {
 		Interest:        uint256.NewInt(0),
 		LastBlockNumber: big.NewInt(0),
 		LastPostQuanPub: EmptyCodeHash.Bytes(),
+		ContractCallCount: big.NewInt(0),
+		TotalNumberOfGas:  uint256.NewInt(0),
+		TotalValueTx:      uint256.NewInt(0),
+
 	}
 }
 
@@ -60,6 +70,7 @@ func (acct *StateAccount) Copy() *StateAccount {
 		balance = new(uint256.Int).Set(acct.Balance)
 	}
 	return &StateAccount{
+
 		Nonce:           acct.Nonce,
 		Balance:         balance,
 		Root:            acct.Root,
@@ -68,6 +79,10 @@ func (acct *StateAccount) Copy() *StateAccount {
 		Interest:        acct.Interest,
 		LastBlockNumber: acct.LastBlockNumber,
 		LastPostQuanPub: common.CopyBytes(acct.LastPostQuanPub),
+		ContractCallCount: acct.ContractCallCount,
+		TotalNumberOfGas:  acct.TotalNumberOfGas,
+		TotalValueTx:      acct.TotalValueTx,
+
 	}
 }
 
@@ -75,6 +90,7 @@ func (acct *StateAccount) Copy() *StateAccount {
 // with a byte slice. This format can be used to represent full-consensus format
 // or slim format which replaces the empty root and code hash as nil byte slice.
 type SlimAccount struct {
+
 	Nonce           uint64
 	Balance         *uint256.Int
 	Root            []byte // Nil if root equals to types.EmptyRootHash
@@ -83,16 +99,23 @@ type SlimAccount struct {
 	Interest        *uint256.Int
 	LastBlockNumber *big.Int
 	LastPostQuanPub []byte
+	ContractCallCount *big.Int
+	TotalNumberOfGas  *uint256.Int
+	TotalValueTx      *uint256.Int
+
 }
 
 // SlimAccountRLP encodes the state account in 'slim RLP' format.
 func SlimAccountRLP(account StateAccount) []byte {
 	slim := SlimAccount{
-		Nonce:           account.Nonce,
-		Balance:         account.Balance,
-		SecurityLevel:   account.SecurityLevel,
-		Interest:        account.Interest,
-		LastBlockNumber: account.LastBlockNumber,
+		Nonce:             account.Nonce,
+		Balance:           account.Balance,
+		SecurityLevel:     account.SecurityLevel,
+		Interest:          account.Interest,
+		LastBlockNumber:   account.LastBlockNumber,
+		ContractCallCount: account.ContractCallCount,
+		TotalNumberOfGas:  account.TotalNumberOfGas,
+		TotalValueTx:      account.TotalValueTx,
 	}
 	if account.Root != EmptyRootHash {
 		slim.Root = account.Root[:]
@@ -122,6 +145,9 @@ func FullAccount(data []byte) (*StateAccount, error) {
 	account.SecurityLevel = slim.SecurityLevel
 	account.LastBlockNumber = slim.LastBlockNumber
 	account.Interest = slim.Interest
+	account.ContractCallCount = slim.ContractCallCount
+	account.TotalNumberOfGas = slim.TotalNumberOfGas
+	account.TotalValueTx = slim.TotalValueTx
 	// Interpret the storage root and code hash in slim format.
 	if len(slim.Root) == 0 {
 		account.Root = EmptyRootHash

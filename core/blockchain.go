@@ -28,6 +28,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	interest "github.com/ethereum/go-ethereum/Interest"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/lru"
 	"github.com/ethereum/go-ethereum/common/mclock"
@@ -221,7 +222,8 @@ type BlockChain struct {
 	stateCache    state.Database                   // State database to reuse between imports (contains state cache)
 	txIndexer     *txIndexer                       // Transaction indexer, might be nil if not enabled
 
-	mdagdb *mdagdb.MerkleDAGDB
+	mdagdb   *mdagdb.MerkleDAGDB
+	pledgedb *interest.PledgeDB
 
 	hc            *HeaderChain
 	rmLogsFeed    event.Feed
@@ -275,6 +277,7 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, genesis *Genesis
 	triedb := trie.NewDatabase(db, cacheConfig.triedbConfig())
 
 	mdagdb := mdagdb.NewMerkleDAGDB(db)
+	pledgedb := interest.NewPledgeDB(db)
 	// Setup the genesis block, commit the provided genesis specification
 	// to database if the genesis block is not present yet, or load the
 	// stored one from database.
@@ -296,6 +299,7 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, genesis *Genesis
 		db:            db,
 		triedb:        triedb,
 		mdagdb:        mdagdb,
+		pledgedb:      pledgedb,
 		triegc:        prque.New[int64, common.Hash](nil),
 		quit:          make(chan struct{}),
 		chainmu:       syncx.NewClosableMutex(),
@@ -2463,4 +2467,8 @@ func (bc *BlockChain) SetTrieFlushInterval(interval time.Duration) {
 // GetTrieFlushInterval gets the in-memory tries flush interval
 func (bc *BlockChain) GetTrieFlushInterval() time.Duration {
 	return time.Duration(bc.flushInterval.Load())
+}
+
+func (bc *BlockChain) PledgeDB() *interest.PledgeDB {
+	return bc.pledgedb
 }

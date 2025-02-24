@@ -406,6 +406,73 @@ func (s *StateDB) SetBalance(addr common.Address, amount *uint256.Int) {
 	}
 }
 
+// TODO: set 合约统计次数
+func (s *StateDB) SetContractCallCount(addr common.Address) {
+	stateObject := s.getOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.SetContractCallCount(big.NewInt(0))
+	}
+}
+
+func (s *StateDB) AddContractCallCount(addr common.Address) {
+	stateObject := s.getOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.AddContractCallCount(big.NewInt(1))
+	}
+}
+
+func (s *StateDB) GetContractCallCount(addr common.Address) *big.Int {
+	stateObject := s.getOrNewStateObject(addr)
+	if stateObject != nil {
+		return stateObject.GetContractCallCount()
+	}
+	return big.NewInt(0)
+}
+
+func (s *StateDB) SetTotalNumberOfGas(addr common.Address) {
+	stateObject := s.getOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.SetTotalNumberOfGas(uint256.NewInt(0))
+	}
+}
+
+func (s *StateDB) AddTotalNumberOfGas(addr common.Address, amount *uint256.Int) {
+	stateObject := s.getOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.AddTotalNumberOfGas(amount)
+	}
+}
+
+func (s *StateDB) GetTotalNumberOfGas(addr common.Address) *uint256.Int {
+	stateObject := s.getOrNewStateObject(addr)
+	if stateObject != nil {
+		return stateObject.GetTotalNumberOfGas()
+	}
+	return uint256.NewInt(0)
+}
+
+func (s *StateDB) GetTotalValueTx(addr common.Address) *uint256.Int {
+	stateObject := s.getOrNewStateObject(addr)
+	if stateObject != nil {
+		return stateObject.GetTotalValueTx()
+	}
+	return uint256.NewInt(0)
+}
+
+func (s *StateDB) SetTotalValueTx(addr common.Address) {
+	stateObject := s.getOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.SetTotalValueTx(uint256.NewInt(0))
+	}
+}
+
+func (s *StateDB) AddTotalValueTx(addr common.Address, amount *uint256.Int) {
+	stateObject := s.getOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.AddTotalValueTx(amount)
+	}
+}
+
 func (s *StateDB) AddInterest(addr common.Address, amount *uint256.Int) {
 	stateObject := s.getOrNewStateObject(addr)
 	if stateObject != nil {
@@ -608,6 +675,9 @@ func (s *StateDB) getDeletedStateObject(addr common.Address) *stateObject {
 				Interest:        acc.Interest,
 				LastBlockNumber: acc.LastBlockNumber,
 				LastPostQuanPub: acc.LastPostQuanPub,
+				TotalNumberOfGas:  acc.TotalNumberOfGas,
+				ContractCallCount: acc.ContractCallCount,
+				TotalValueTx:      acc.TotalValueTx,
 			}
 			if len(data.CodeHash) == 0 {
 				data.CodeHash = types.EmptyCodeHash.Bytes()
@@ -1485,6 +1555,7 @@ func (s *StateDB) ComputeInterest(addr common.Address, currentNumber *big.Int) {
 	// Change account state
 	obj.data.Interest.Add(interest_u256, obj.data.Interest)
 	obj.data.LastBlockNumber.Set(currentNumber)
+	log.Info("LastBlockNumber 是 ", "value", obj.data.LastBlockNumber)
 }
 
 // Use interest to pay gas, if insufficient return the insufficient amount

@@ -51,7 +51,7 @@ const (
 	BlobTxType          = 0x03
 	PowTxType           = 0x04 // New transaction type
 	DynamicCryptoTxType = 0x05
-	SystemTxType        = 0x06
+	DepositTxType       = 0x06
 )
 
 // Transaction is an Ethereum transaction.
@@ -213,8 +213,8 @@ func (tx *Transaction) decodeTyped(b []byte) (TxData, error) {
 		inner = new(PowTx)
 	case DynamicCryptoTxType:
 		inner = new(DynamicCryptoTx)
-	case SystemTxType:
-		inner = new(SystemTx)
+	case DepositTxType:
+		inner = new(DepositTx)
 	default:
 		return nil, ErrTxTypeNotSupported
 	}
@@ -643,9 +643,44 @@ func (tx *Transaction) JsonExcludePostQumSign() ([]byte, error) {
 	return nil, fmt.Errorf("tx is not dynamicCrypto")
 }
 
-func (tx *Transaction) SystemFlag() uint64 {
-	if systemTx, ok := tx.inner.(*SystemTx); ok {
-		return systemTx.systemFlag()
+// func (tx *Transaction) SystemFlag() uint64 {
+// 	if systemTx, ok := tx.inner.(*SystemTx); ok {
+// 		return systemTx.systemFlag()
+// 	}
+// 	return 0
+// }
+
+func (tx *Transaction) DeployerAddress() *common.Address {
+	if depositTx, ok := tx.inner.(*DepositTx); ok {
+		return depositTx.deployerAddress()
+	}
+	return nil
+}
+
+func (tx *Transaction) InvestorAddress() *common.Address {
+	if depositTx, ok := tx.inner.(*DepositTx); ok {
+		return depositTx.investorAddress()
+	}
+	return nil
+}
+
+func (tx *Transaction) BeneficiaryAddress() *common.Address {
+	if depositTx, ok := tx.inner.(*DepositTx); ok {
+		return depositTx.beneficiaryAddress()
+	}
+	return nil
+}
+
+func (tx *Transaction) StakedAmount() *big.Int {
+	if depositTx, ok := tx.inner.(*DepositTx); ok {
+		return depositTx.stakedAmount()
+	}
+	return nil
+}
+
+func (tx *Transaction) StakedTime() uint64 {
+	if depositTx, ok := tx.inner.(*DepositTx); ok {
+		return depositTx.stakedTime()
 	}
 	return 0
 }
