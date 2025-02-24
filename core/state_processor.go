@@ -186,6 +186,36 @@ func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *commo
 	value := new(uint256.Int)
 	receipt, err2 := applyTransaction(msg, config, gp, statedb, header.Number, header.Hash(), tx, usedGas, vmenv, value)
 	// accumulate incentive to the header. Attention type of Incentive(point or value)
+
+	// TODO: add my total gas compute
+	// 1.获取合约账户对象
+	// 2.累加合约的 gas 使用量
+	// if statedb != nil {
+	// 	gasUsed := new(big.Int).SetUint64(receipt.GasUsed)
+	// 	// 检查交易目标地址（合约地址），如果是创建合约交易，则计算合约地址
+	// 	var contractAddr common.Address
+	// 	if msg.To == nil {
+	// 		contractAddr = crypto.CreateAddress(msg.From, tx.Nonce())
+	// 	} else {
+	// 		contractAddr = *msg.To
+	// 	}
+
+	// 	// 获取合约账户对象
+	// 	stateObj := statedb.getStateObject() // 这部分是内部函数，需要把方法塞到statedb.go里面执行。。。
+	// 	if stateObj != nil {
+	// 		// 确保 TotalNumberOfGas 初始化
+	// 		if stateObj.TotalNumberOfGas == nil {
+	// 			stateObj.TotalNumberOfGas = new(big.Int)
+	// 		}
+
+	// 		// 累加 gas 使用量
+	// 		stateObj.TotalNumberOfGas.Add(stateObj.Data().TotalNumberOfGas, gasUsed)
+
+	// 		// 将状态标记为 dirty，以确保持久化
+	// 		statedb.SetState(contractAddr, common.Hash{}, common.BytesToHash(stateObj.TotalNumberOfGas.Bytes()))
+	// 	}
+	// }
+
 	header.Incentive = new(uint256.Int).Add(value, header.Incentive)
 	return receipt, err2
 }

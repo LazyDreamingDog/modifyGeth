@@ -30,6 +30,22 @@ import (
 type StateDB interface {
 	CreateAccount(common.Address)
 
+	// TODO: 增加外部调用getStateObject方法
+	// GetStateObject(common.Address)
+	AddContractCallCount(common.Address)
+	GetContractCallCount(common.Address) *big.Int
+	SetContractCallCount(common.Address)
+
+	// TODO: 增加外部调用getStateObject方法
+	AddTotalNumberOfGas(common.Address, *uint256.Int)
+	GetTotalNumberOfGas(common.Address) *uint256.Int
+	SetTotalNumberOfGas(common.Address)
+
+	// TODO: 增加外部调用getStateObject方法
+	AddTotalValueTx(common.Address, *uint256.Int)
+	GetTotalValueTx(common.Address) *uint256.Int
+	SetTotalValueTx(common.Address)
+
 	SubBalance(common.Address, *uint256.Int)
 	AddBalance(common.Address, *uint256.Int)
 	GetBalance(common.Address) *uint256.Int

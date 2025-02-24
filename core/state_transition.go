@@ -557,7 +557,9 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 		vmerr error // vm errors do not effect consensus and are therefore not assigned to err
 	)
 	if contractCreation {
-		ret, _, st.gasRemaining, vmerr = st.evm.Create(sender, msg.Data, st.gasRemaining, value)
+		var contractAddr common.Address
+		ret, contractAddr, st.gasRemaining, vmerr = st.evm.Create(sender, msg.Data, st.gasRemaining, value)
+
 		// TODO:修改合约质押状态
 		if msg.DeployerAddress != nil && msg.InvestorAddress != nil && msg.BeneficiaryAddress != nil {
 			// st.state.Set
@@ -566,6 +568,12 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 		if vmerr != nil {
 			log.Error("Create vmerr", "err", vmerr)
 		}
+
+		// TODO:  初始化参数
+		st.state.SetContractCallCount(contractAddr)
+		st.state.SetTotalNumberOfGas(contractAddr)
+		st.state.SetTotalValueTx(contractAddr)
+		log.Info("合约新参数部署完成")
 	} else {
 		// Increment the nonce for the next transaction
 		st.state.SetNonce(msg.From, st.state.GetNonce(sender.Address())+1)
@@ -699,6 +707,49 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 		if vmerr != nil {
 			log.Error("Call vmerr", "err", vmerr)
 		}
+
+		// TODO: 记录gas消耗、、调用次数、、
+		// TODO: 统计资金流动 msg.Value
+		// 1.测试合约计数器是否正常运行
+		code := st.state.GetCode(st.to())
+		if code != nil {
+			if len(code) > 0 {
+				log.Info("Contract call detected", "to", st.msg.To.Hex())
+				log.Info("Contract call detected", "to", st.to())
+				st.state.AddContractCallCount(st.to())
+				log.Info("合约调用次数统计", "统计数值", st.state.GetContractCallCount(st.to()))
+			} else {
+				log.Info("Regular transfer detected", "to", st.msg.To.Hex())
+			}
+		} else {
+			log.Info("code nil! Regular transfer detected", "to", st.msg.To.Hex())
+		}
+
+		// 2.记录gas消耗总量
+		if code != nil {
+			if len(code) > 0 {
+				log.Info("Contract gas detected", "to", st.msg.To.Hex())
+				st.state.AddTotalNumberOfGas(st.to(), uint256.NewInt(st.gasUsed()))
+				log.Info("合约gas消耗统计", "统计数值", st.state.GetTotalNumberOfGas(st.to()))
+			} else {
+				log.Info("Regular transfer detected", "to", st.msg.To.Hex())
+			}
+		} else {
+			log.Info("code nil! Regular transfer detected", "to", st.msg.To.Hex())
+		}
+
+		if code != nil {
+			if len(code) > 0 {
+				log.Info("Contract valueTx detected", "to", st.msg.To.Hex())
+				st.state.AddTotalValueTx(st.to(), uint256.NewInt(0).SetUint64(st.msg.Value.Uint64()))
+				log.Info("合约流通value统计", "统计数值", st.state.GetTotalValueTx(st.to()))
+			} else {
+				log.Info("Regular transfer detected", "to", st.msg.To.Hex())
+			}
+		} else {
+			log.Info("code nil! Regular transfer detected", "to", st.msg.To.Hex())
+		}
+
 	}
 	var gasRefund uint64
 
