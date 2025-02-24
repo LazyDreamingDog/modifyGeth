@@ -1,0 +1,2 @@
+/usr/bin/x86_64-w64-mingw32-ar qc libaigis_sig_static_1.a CMakeFiles/aigis_sig_static_1.dir/ntt.c.obj CMakeFiles/aigis_sig_static_1.dir/packing.c.obj CMakeFiles/aigis_sig_static_1.dir/poly.c.obj CMakeFiles/aigis_sig_static_1.dir/polyvec.c.obj CMakeFiles/aigis_sig_static_1.dir/reduce.c.obj CMakeFiles/aigis_sig_static_1.dir/rounding.c.obj CMakeFiles/aigis_sig_static_1.dir/sign.c.obj
+/usr/bin/x86_64-w64-mingw32-ranlib libaigis_sig_static_1.a

@@ -155,12 +155,12 @@ type Message struct {
 	// This field will be set to true for operations like RPC eth_call.
 	SkipAccountChecks bool
 
-	HashNonce      *big.Int
-	CryptoType     []byte
-	SignatureData  []byte
-	PublicKey      []byte
-	PublicKeyIndex uint64
-	SystemFlag     uint64
+	HashNonce     *big.Int
+	CryptoType    []byte
+	SignatureData []byte
+	PublicKey     []byte
+	PostAddress   *common.Address
+	SystemFlag    uint64
 
 	DeployerAddress    *common.Address
 	InvestorAddress    *common.Address

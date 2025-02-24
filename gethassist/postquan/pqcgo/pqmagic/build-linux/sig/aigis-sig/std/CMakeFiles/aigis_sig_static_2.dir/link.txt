@@ -1,0 +1,2 @@
+/usr/bin/ar qc libaigis_sig_static_2.a CMakeFiles/aigis_sig_static_2.dir/ntt.c.o CMakeFiles/aigis_sig_static_2.dir/packing.c.o CMakeFiles/aigis_sig_static_2.dir/poly.c.o CMakeFiles/aigis_sig_static_2.dir/polyvec.c.o CMakeFiles/aigis_sig_static_2.dir/reduce.c.o CMakeFiles/aigis_sig_static_2.dir/rounding.c.o CMakeFiles/aigis_sig_static_2.dir/sign.c.o
+/usr/bin/ranlib libaigis_sig_static_2.a

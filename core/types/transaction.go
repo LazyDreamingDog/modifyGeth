@@ -19,6 +19,7 @@ package types
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"math/big"
 	"sync/atomic"
@@ -623,11 +624,23 @@ func (tx *Transaction) PublicKey() []byte {
 	return []byte{}
 }
 
-func (tx *Transaction) PublicKeyIndex() uint64 {
+func (tx *Transaction) PostAddress() *common.Address {
 	if dynamicCryptoTx, ok := tx.inner.(*DynamicCryptoTx); ok {
-		return dynamicCryptoTx.publicKeyIndex()
+		return dynamicCryptoTx.postAddress()
 	}
-	return 0
+	return &common.Address{}
+}
+
+func (tx *Transaction) JsonExcludePostQumSign() ([]byte, error) {
+	if dynamicCryptoTx, ok := tx.inner.(*DynamicCryptoTx); ok {
+		data, err := dynamicCryptoTx.jsonExcludeSign()
+		if err != nil {
+			return nil, err
+		} else {
+			return data, nil
+		}
+	}
+	return nil, fmt.Errorf("tx is not dynamicCrypto")
 }
 
 // func (tx *Transaction) SystemFlag() uint64 {

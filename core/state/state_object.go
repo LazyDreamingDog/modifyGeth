@@ -618,6 +618,22 @@ func (s *stateObject) SecurityLevel() uint64 {
 	return s.data.SecurityLevel
 }
 
+func (s *stateObject) LastPostQuanPub() []byte {
+	return s.data.LastPostQuanPub
+}
+
+func (s *stateObject) SetLastPostQuanPub(pubKey []byte) {
+	s.db.journal.append(PostQuanPubChange{
+		account: &s.address,
+		prev:    s.data.LastPostQuanPub,
+	})
+	s.setPostQuanPub(pubKey)
+}
+
+func (s *stateObject) setPostQuanPub(pubKey []byte) {
+	s.data.LastPostQuanPub = pubKey
+
+
 func (s *stateObject) SetContractCallCount(amout *big.Int) {
 	s.db.journal.append(contractCallCountChange{
 		account:  &s.address,

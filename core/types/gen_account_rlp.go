@@ -30,6 +30,7 @@ func (obj *StateAccount) EncodeRLP(_w io.Writer) error {
 		}
 		w.WriteBigInt(obj.LastBlockNumber)
 	}
+	w.WriteBytes(obj.LastPostQuanPub)
 	if obj.TotalNumberOfGas == nil {
 		w.Write(rlp.EmptyString)
 	} else {

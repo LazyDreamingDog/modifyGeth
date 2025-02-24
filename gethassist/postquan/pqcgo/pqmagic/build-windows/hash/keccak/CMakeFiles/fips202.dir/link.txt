@@ -1,0 +1,2 @@
+/usr/bin/x86_64-w64-mingw32-ar qc libfips202.a CMakeFiles/fips202.dir/fips202.c.obj
+/usr/bin/x86_64-w64-mingw32-ranlib libfips202.a

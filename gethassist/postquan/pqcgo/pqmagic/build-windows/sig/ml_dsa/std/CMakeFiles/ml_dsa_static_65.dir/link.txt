@@ -1,0 +1,2 @@
+/usr/bin/x86_64-w64-mingw32-ar qc libml_dsa_static_65.a CMakeFiles/ml_dsa_static_65.dir/ntt.c.obj CMakeFiles/ml_dsa_static_65.dir/packing.c.obj CMakeFiles/ml_dsa_static_65.dir/poly.c.obj CMakeFiles/ml_dsa_static_65.dir/polyvec.c.obj CMakeFiles/ml_dsa_static_65.dir/reduce.c.obj CMakeFiles/ml_dsa_static_65.dir/rounding.c.obj CMakeFiles/ml_dsa_static_65.dir/sign.c.obj CMakeFiles/ml_dsa_static_65.dir/symmetric-shake.c.obj
+/usr/bin/x86_64-w64-mingw32-ranlib libml_dsa_static_65.a

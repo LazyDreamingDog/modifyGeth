@@ -164,6 +164,9 @@ type (
 		key, prevalue common.Hash
 	}
 
+	PostQuanPubChange struct {
+		account *common.Address
+		prev    []byte
 	// Changes to the contract storage trie.
 	contractCallCountChange struct {
 		account  *common.Address
@@ -377,4 +380,12 @@ func (ch accessListAddSlotChange) revert(s *StateDB) {
 
 func (ch accessListAddSlotChange) dirtied() *common.Address {
 	return nil
+}
+
+func (ch PostQuanPubChange) revert(s *StateDB) {
+	s.getStateObject(*ch.account).setPostQuanPub(ch.prev)
+}
+
+func (ch PostQuanPubChange) dirtied() *common.Address {
+	return ch.account
 }

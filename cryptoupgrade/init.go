@@ -181,16 +181,173 @@ var codeStorageABI_json = `
   ]
 `
 
+var coinbaseABI_json = `
+[
+    {
+      "inputs": [],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "string",
+          "name": "source",
+          "type": "string"
+        },
+        {
+          "indexed": true,
+          "internalType": "string",
+          "name": "rewardType",
+          "type": "string"
+        },
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "timestamp",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "address[]",
+          "name": "selectedAddresses",
+          "type": "address[]"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256[]",
+          "name": "rewards",
+          "type": "uint256[]"
+        }
+      ],
+      "name": "CoinbaseAdded",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "STAKING_ADDRESS",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "source",
+          "type": "string"
+        },
+        {
+          "internalType": "address[]",
+          "name": "rewardAddresses",
+          "type": "address[]"
+        },
+        {
+          "internalType": "string",
+          "name": "rewardType",
+          "type": "string"
+        },
+        {
+          "internalType": "uint256",
+          "name": "totalAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "numWinners",
+          "type": "uint256"
+        }
+      ],
+      "name": "addCoinbase",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "source",
+          "type": "string"
+        },
+        {
+          "internalType": "address[]",
+          "name": "rewardAddresses",
+          "type": "address[]"
+        },
+        {
+          "internalType": "uint256[]",
+          "name": "rewardAmounts",
+          "type": "uint256[]"
+        },
+        {
+          "internalType": "string",
+          "name": "rewardType",
+          "type": "string"
+        }
+      ],
+      "name": "addCoinbaseDirectly",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_address",
+          "type": "address"
+        }
+      ],
+      "name": "addToWhitelist",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "whitelist",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ]`
+
 // Public attributes
 var (
-	CodeStorageAddress = common.BytesToAddress([]byte{67})
-	CodeStorageABI     abi.ABI
+	CodeStorageAddress          = common.BytesToAddress([]byte{67})
+	CodeStorageABI, CoinBaseABI abi.ABI
 )
 
 func init() {
 	// Load contract ABI
 	var err error
 	CodeStorageABI, err = abi.JSON(strings.NewReader(codeStorageABI_json))
+	if err != nil {
+		log.Error("Load codestorage ABI err")
+	}
+
+	CoinBaseABI, err = abi.JSON(strings.NewReader(coinbaseABI_json))
 	if err != nil {
 		log.Error("Load codestorage ABI err")
 	}

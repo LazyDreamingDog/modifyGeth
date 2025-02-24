@@ -19,6 +19,7 @@ package core
 import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/core/vm"
 )
 
 // NewTxsEvent is posted when a batch of transactions enter the transaction pool.
@@ -45,3 +46,11 @@ type ChainSideEvent struct {
 
 // TODO ：关键
 type ChainHeadEvent struct{ Block *types.Block }
+
+// Tx need post-quantum trading validation
+type PostQuanEvent struct {
+	Txs           types.Transactions
+	Signer        types.Signer
+	VerifiedTxsCh chan types.Transactions
+	State         vm.StateDB
+}

@@ -1,0 +1,6 @@
+CREATE libpqmagic_aigis_sig_std.a
+ADDLIB libaigis_sig_static_1.a
+ADDLIB libaigis_sig_static_2.a
+ADDLIB libaigis_sig_static_3.a
+SAVE
+END

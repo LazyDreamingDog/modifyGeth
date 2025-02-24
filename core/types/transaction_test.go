@@ -929,3 +929,29 @@ func TestPowTxSerialization(t *testing.T) {
 		})
 	}
 }
+
+func TestDynamicCryptoSerialization(t *testing.T) {
+	dynamicCryptoTx := &DynamicCryptoTx{
+		ChainID:       big.NewInt(1),
+		Nonce:         123,
+		GasTipCap:     big.NewInt(1),
+		GasFeeCap:     big.NewInt(200),
+		Gas:           50000,
+		To:            &common.Address{},
+		Value:         big.NewInt(1000),
+		Data:          []byte{},
+		AccessList:    AccessList{},
+		CryptoType:    []byte{1},
+		SignatureData: []byte{222},
+		V:             big.NewInt(0),
+		R:             big.NewInt(0),
+		S:             big.NewInt(0),
+	}
+
+	data, err := sortedJSONMarshal(dynamicCryptoTx)
+	if err != nil {
+		t.Fatal(err)
+	} else {
+		t.Logf("JSON:%s", data)
+	}
+}
