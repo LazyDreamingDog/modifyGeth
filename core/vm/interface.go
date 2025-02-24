@@ -38,12 +38,10 @@ type StateDB interface {
 	SubInterest(common.Address, *uint256.Int)
 	AddInterest(common.Address, *uint256.Int)
 	GetInterest(common.Address) *uint256.Int
-	UseInterest(addr common.Address, usedInterest *uint256.Int) *uint256.Int
+	UseInterest(common.Address, *uint256.Int) *uint256.Int
 
-	SetInterestRate(uint64)
-	SetTransferInterestRate(uint64)
-	GetInterestRate() uint64
-	GetTransferInterestRate() uint64
+	GetLastPostQuanPub(common.Address) []byte
+	SetLastPostQuanPub(common.Address, []byte)
 
 	GetNonce(common.Address) uint64
 	SetNonce(common.Address, uint64)

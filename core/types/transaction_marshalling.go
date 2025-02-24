@@ -51,7 +51,7 @@ type txJSON struct {
 	CryptoType           *hexutil.Bytes  `json:"cryptoType"`            // New field for DynamicCryptoTx
 	SignatureData        *hexutil.Bytes  `json:"signatureData"`         // New field for DynamicCryptoTx
 	PublicKey            *hexutil.Bytes  `json:"publicKey"`             // New field for DynamicCryptoTx
-	PublicKeyIndex       *hexutil.Uint64 `json:"publicKeyIndex"`        // New field for DynamicCryptoTx
+	PostAddress          *common.Address `json:"postAddress"`           // New field for DynamicCryptoTx
 
 	// Only used for encoding:
 	Hash common.Hash `json:"hash"`
@@ -167,7 +167,7 @@ func (tx *Transaction) MarshalJSON() ([]byte, error) {
 		yparity := itx.V.Uint64()
 		enc.YParity = (*hexutil.Uint64)(&yparity)
 
-		// New case for DynamicCryptoTx
+	// New case for DynamicCryptoTx
 	case *DynamicCryptoTx:
 		enc.ChainID = (*hexutil.Big)(itx.ChainID)
 		enc.Nonce = (*hexutil.Uint64)(&itx.Nonce)
@@ -178,10 +178,10 @@ func (tx *Transaction) MarshalJSON() ([]byte, error) {
 		enc.Value = (*hexutil.Big)(itx.Value)
 		enc.Input = (*hexutil.Bytes)(&itx.Data)
 		enc.AccessList = &itx.AccessList
-		enc.CryptoType = (*hexutil.Bytes)(&itx.CryptoType)          // New field for CryptoType
-		enc.SignatureData = (*hexutil.Bytes)(&itx.SignatureData)    // New field for SignatureData
-		enc.PublicKey = (*hexutil.Bytes)(&itx.PublicKey)            // New field for PublicKey
-		enc.PublicKeyIndex = (*hexutil.Uint64)(&itx.PublicKeyIndex) // New field for PublicKeyIndex
+		enc.CryptoType = (*hexutil.Bytes)(&itx.CryptoType)       // New field for CryptoType
+		enc.SignatureData = (*hexutil.Bytes)(&itx.SignatureData) // New field for SignatureData
+		enc.PublicKey = (*hexutil.Bytes)(&itx.PublicKey)         // New field for PublicKey
+		enc.PostAddress = itx.PostAddress                        // New field for PublicKeyIndex
 		enc.V = (*hexutil.Big)(itx.V)
 		enc.R = (*hexutil.Big)(itx.R)
 		enc.S = (*hexutil.Big)(itx.S)
@@ -548,10 +548,10 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 			return errors.New("missing required field 'publicKey' in transaction")
 		}
 		itx.PublicKey = *dec.PublicKey
-		if dec.PublicKeyIndex == nil {
+		if dec.PostAddress == nil {
 			return errors.New("missing required field 'publicKeyIndex' in transaction")
 		}
-		itx.PublicKeyIndex = uint64(*dec.PublicKeyIndex)
+		itx.PostAddress = dec.PostAddress
 
 		// signature R
 		if dec.R == nil {

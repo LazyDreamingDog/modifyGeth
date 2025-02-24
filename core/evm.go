@@ -25,6 +25,7 @@ import (
 	"github.com/ethereum/go-ethereum/consensus/misc/eip4844"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/holiman/uint256"
 )
 
@@ -185,12 +186,11 @@ func Transfer(db vm.StateDB, sender, recipient common.Address, amount *uint256.I
 	db.SubBalance(sender, amount)
 	db.AddBalance(recipient, amount)
 	// Transfer interest to recipient
-	rate := db.GetTransferInterestRate()
+	rate := params.TransferInterestRate
 	interest := db.GetInterest(sender)
 	// Transfer interst= rate * interest
 	tranInterest := interest.Mul(interest, uint256.NewInt(rate))
 	fmt.Printf("%s transfer %v interest to %s\n", sender, tranInterest, recipient)
 	db.AddInterest(recipient, tranInterest)
 	db.SubInterest(sender, tranInterest)
-
 }

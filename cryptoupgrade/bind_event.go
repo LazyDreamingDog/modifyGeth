@@ -15,7 +15,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 )
 
-// Define Interface to avoid cricle import ethclient->core->upgradecrptoupgrade
+// Define Interface to avoid cricle import:"ethclient->core->upgradecrptoupgrade"
 type client interface {
 	SubscribeFilterLogs(ctx context.Context, q ethereum.FilterQuery, ch chan<- types.Log) (ethereum.Subscription, error)
 	CallContract(ctx context.Context, msg ethereum.CallMsg, blockNumber *big.Int) ([]byte, error)
@@ -50,13 +50,23 @@ func BindCodeUploaded(client client) {
 	// Subscribe to logs that meet FilterQuery,and logs will be stored in the logCh
 	sub, err := client.SubscribeFilterLogs(context.Background(), query, logCh)
 	if err != nil {
-		log.Error("Failed to subscribe to logs: %v", err)
+		log.Error("Failed to subscribe to cryptoupgrade logs: %v", err)
 	}
+	defer sub.Unsubscribe()
+
+	// Subsribe coinbase add event
+	coinBaseAddress := common.HexToAddress("0x63BC05BC6FCAb99AF9A4c215B2e92a9C6f45D41F")
+	eventHash := crypto.Keccak256Hash([]byte("CoinbaseAdded(string,string,uint256,address[],uint256[])"))
+	coinSub, coinLogCh, err := bindCoinBaseEvent(client, coinBaseAddress, eventHash)
+	if err != nil {
+		log.Error("Failed to subscribe to coinbase logs: %v", err)
+	}
+	defer coinSub.Unsubscribe()
 
 	for {
 		select {
 		case err := <-sub.Err():
-			log.Error("Error while listening for logs: %v", err)
+			log.Error("Error while listening for cryptoupgrade logs: %v", err)
 		case Log := <-logCh:
 			// Parse name from event
 			log.Info("Catch codeUploaded event!")
@@ -99,7 +109,24 @@ func BindCodeUploaded(client client) {
 				log.Info(fmt.Sprintf("Using go version: %s,compiled algorithm to %s.", goVerison, pluginfilePath))
 				algoInfoMap[name] = *pc
 			}
+		case err := <-coinSub.Err():
+			log.Error("Error while listening for coinbase logs: %v", err)
+		case Log := <-coinLogCh:
+			log.Info("Catch coinBase add event!")
+
+			// Parse name from event
+			vmap := make(map[string]interface{})
+			err := CoinBaseABI.UnpackIntoMap(vmap, "CoinbaseAdded", Log.Data)
+			if err != nil {
+				log.Error("Decode log data error")
+			}
+			fmt.Printf("vmap: %v\n", vmap)
+			// Parse address and rewards array
+			// selectedAddresses := vmap["selectedAddresses"].([]common.Address)
+			// rewards := vmap["rewards"].([]*big.Int)
+
 		}
+
 	}
 
 }

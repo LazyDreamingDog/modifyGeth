@@ -30,6 +30,7 @@ func (obj *StateAccount) EncodeRLP(_w io.Writer) error {
 		}
 		w.WriteBigInt(obj.LastBlockNumber)
 	}
+	w.WriteBytes(obj.LastPostQuanPub)
 	w.ListEnd(_tmp0)
 	return w.Flush()
 }

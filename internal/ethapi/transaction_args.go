@@ -64,10 +64,10 @@ type TransactionArgs struct {
 	HashNonce *hexutil.Big `json:"hashNonce,omitempty"`
 
 	// Introduced by DynamicCryptoTxType
-	CryptoType     *hexutil.Bytes  `json:"cryptoType,omitempty"`
-	SignatureData  *hexutil.Bytes  `json:"signatureData,omitempty"`
-	PublicKey      *hexutil.Bytes  `json:"publicKey,omitempty"`
-	PublicKeyIndex *hexutil.Uint64 `json:"publicKeyIndex,omitempty"`
+	CryptoType    *hexutil.Bytes  `json:"cryptoType,omitempty"`
+	SignatureData *hexutil.Bytes  `json:"signatureData,omitempty"`
+	PublicKey     *hexutil.Bytes  `json:"publicKey,omitempty"`
+	PostAddress   *common.Address `json:"postAddress,omitempty"`
 }
 
 // from retrieves the transaction sender address.
@@ -348,9 +348,9 @@ func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (*
 	if args.PublicKey != nil {
 		publicKey = *args.PublicKey
 	}
-	publicKeyIndex := uint64(0)
-	if args.PublicKeyIndex != nil {
-		publicKeyIndex = uint64(*args.PublicKeyIndex)
+	postAddress := &common.Address{}
+	if args.PostAddress != nil {
+		postAddress = args.PostAddress
 	}
 
 	msg := &core.Message{
@@ -370,7 +370,7 @@ func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (*
 		CryptoType:        cryptoType,
 		SignatureData:     signatureData,
 		PublicKey:         publicKey,
-		PublicKeyIndex:    publicKeyIndex,
+		PostAddress:       postAddress,
 	}
 	return msg, nil
 }
@@ -380,7 +380,7 @@ func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (*
 func (args *TransactionArgs) toTransaction() *types.Transaction {
 	var data types.TxData
 	switch {
-	case args.PublicKey != nil && args.PublicKeyIndex != nil:
+	case args.PublicKey != nil && args.PostAddress != nil:
 		al := types.AccessList{}
 		if args.AccessList != nil {
 			al = *args.AccessList

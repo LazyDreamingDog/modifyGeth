@@ -1,0 +1,6 @@
+CREATE libpqmagic_dilithium_std.a
+ADDLIB libdilithium_static_2.a
+ADDLIB libdilithium_static_3.a
+ADDLIB libdilithium_static_5.a
+SAVE
+END

@@ -37,6 +37,7 @@ type StateAccount struct {
 	SecurityLevel   uint64 // security level range 1-5. 0 means the account is locked
 	Interest        *uint256.Int
 	LastBlockNumber *big.Int // The block number where the interest was last calculated
+	LastPostQuanPub []byte
 }
 
 // NewEmptyStateAccount constructs an empty state account.
@@ -48,6 +49,7 @@ func NewEmptyStateAccount() *StateAccount {
 		SecurityLevel:   1,
 		Interest:        uint256.NewInt(0),
 		LastBlockNumber: big.NewInt(0),
+		LastPostQuanPub: EmptyCodeHash.Bytes(),
 	}
 }
 
@@ -65,6 +67,7 @@ func (acct *StateAccount) Copy() *StateAccount {
 		SecurityLevel:   acct.SecurityLevel,
 		Interest:        acct.Interest,
 		LastBlockNumber: acct.LastBlockNumber,
+		LastPostQuanPub: common.CopyBytes(acct.LastPostQuanPub),
 	}
 }
 
@@ -79,6 +82,7 @@ type SlimAccount struct {
 	SecurityLevel   uint64
 	Interest        *uint256.Int
 	LastBlockNumber *big.Int
+	LastPostQuanPub []byte
 }
 
 // SlimAccountRLP encodes the state account in 'slim RLP' format.
@@ -95,6 +99,9 @@ func SlimAccountRLP(account StateAccount) []byte {
 	}
 	if !bytes.Equal(account.CodeHash, EmptyCodeHash[:]) {
 		slim.CodeHash = account.CodeHash
+	}
+	if !bytes.Equal(account.LastPostQuanPub, EmptyCodeHash[:]) {
+		slim.LastPostQuanPub = account.LastPostQuanPub
 	}
 	data, err := rlp.EncodeToBytes(slim)
 	if err != nil {

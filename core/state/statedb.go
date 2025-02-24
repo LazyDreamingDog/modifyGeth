@@ -139,10 +139,6 @@ type StateDB struct {
 
 	// Testing hooks
 	onCommit func(states *triestate.Set) // Hook invoked when commit is performed
-
-	// Interest rate, 0-100
-	interestRate         uint64
-	transferInterestRate uint64
 }
 
 // New creates a new state from a given trie.
@@ -611,6 +607,7 @@ func (s *StateDB) getDeletedStateObject(addr common.Address) *stateObject {
 				SecurityLevel:   acc.SecurityLevel,
 				Interest:        acc.Interest,
 				LastBlockNumber: acc.LastBlockNumber,
+				LastPostQuanPub: acc.LastPostQuanPub,
 			}
 			if len(data.CodeHash) == 0 {
 				data.CodeHash = types.EmptyCodeHash.Bytes()
@@ -740,9 +737,8 @@ func (s *StateDB) Copy() *StateDB {
 		// to the snapshot tree, we need to copy that as well. Otherwise, any
 		// block mined by ourselves will cause gaps in the tree, and force the
 		// miner to operate trie-backed only.
-		snaps:        s.snaps,
-		snap:         s.snap,
-		interestRate: s.interestRate,
+		snaps: s.snaps,
+		snap:  s.snap,
 	}
 	// Copy the dirty states, logs, and preimages
 	for addr := range s.journal.dirties {
@@ -1458,28 +1454,6 @@ func (s *StateDB) SetSecurityLevel(addr common.Address, level uint64) {
 
 }
 
-// * Methods are used to interest compute
-func (s *StateDB) SetInterestRate(rate uint64) {
-	if rate > 100 {
-		// rate is bigger than 100%
-		fmt.Printf("interest rate: %v is illegal\n", rate)
-	} else {
-		s.interestRate = rate
-	}
-}
-
-func (s *StateDB) SetTransferInterestRate(rate uint64) {
-	if rate > 100 {
-		// rate is bigger than 100%
-		fmt.Printf("interest rate: %v is illegal\n", rate)
-	} else {
-		s.transferInterestRate = rate
-	}
-}
-
-func (s *StateDB) GetInterestRate() uint64         { return s.interestRate }
-func (s *StateDB) GetTransferInterestRate() uint64 { return s.transferInterestRate }
-
 // Return the old block number(interest edit), and record the current number
 func (s *StateDB) ComputeInterest(addr common.Address, currentNumber *big.Int) {
 	obj := s.getStateObject(addr)
@@ -1497,7 +1471,7 @@ func (s *StateDB) ComputeInterest(addr common.Address, currentNumber *big.Int) {
 	// Compute interest=(currentNumber - lastNumber) * rate * balance
 	interest := big.NewInt(1)
 	interest.Sub(currentNumber, obj.data.LastBlockNumber)
-	interest.Mul(interest, big.NewInt(0).SetUint64(s.interestRate))
+	interest.Mul(interest, big.NewInt(0).SetUint64(params.InterestRate))
 
 	interest_u256 := uint256.NewInt(0)
 	interest_u256.SetFromBig(interest)
@@ -1514,28 +1488,43 @@ func (s *StateDB) ComputeInterest(addr common.Address, currentNumber *big.Int) {
 }
 
 // Use interest to pay gas, if insufficient return the insufficient amount
-func (s *StateDB) UseInterest(addr common.Address, usedInterest *uint256.Int) *uint256.Int {
-	obj := s.getStateObject(addr)
+func (s *StateDB) UseInterest(addr common.Address, expectInterest *uint256.Int) *uint256.Int {
 	// Interest in stateDB is expanded by 100 times to avoid decimals. So there need to mul 100
-	usedInterest.Mul(usedInterest, uint256.NewInt(100))
+	expectInterest.Mul(expectInterest, uint256.NewInt(100))
 
-	interest := obj.data.Interest
+	// Validity check
+	interest := s.GetInterest(addr)
 	if interest == nil {
 		log.Error("Interest is not initial")
-		return usedInterest
+		return expectInterest
 	}
 
-	if interest.Cmp(usedInterest) == -1 {
+	insuffAmount := uint256.NewInt(0)
+	if interest.Cmp(expectInterest) == -1 {
 		// Insufficient to pay gas
-		insuffAmount := uint256.NewInt(0)
-		insuffAmount.Sub(usedInterest, obj.data.Interest)
+		insuffAmount.Sub(expectInterest, interest)
 		// Div 100
 		insuffAmount_div100 := uint256.NewInt(0)
 		insuffAmount_div100.Div(insuffAmount, uint256.NewInt(100))
-		return insuffAmount
+		// Sub to zero
+		s.SubInterest(addr, interest)
 	} else {
-		// Sufficient to pay gas
-		obj.data.Interest.Sub(obj.data.Interest, usedInterest)
-		return nil
+		s.SubInterest(addr, expectInterest)
+	}
+	return insuffAmount
+}
+
+func (s *StateDB) GetLastPostQuanPub(addr common.Address) []byte {
+	stateObject := s.getStateObject(addr)
+	if stateObject != nil {
+		return stateObject.LastPostQuanPub()
+	}
+	return nil
+}
+
+func (s *StateDB) SetLastPostQuanPub(addr common.Address, pubKey []byte) {
+	stateObject := s.getOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.SetLastPostQuanPub(pubKey)
 	}
 }

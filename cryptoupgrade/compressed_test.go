@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 // The test will create a copy in current folder.
@@ -67,4 +68,9 @@ func TestBytes(t *testing.T) {
 	// When passing parameters to the solidity compiler, the byte needs to be converted to hexadecimal
 	result2 := "0x" + common.Bytes2Hex(itypeBytes[:])
 	fmt.Printf("result2: %v\n", result2)
+}
+
+func TestEventHash(t *testing.T) {
+	eventHash := crypto.Keccak256([]byte("CoinbaseAdded(string,string,uint256,address[],uint256[])"))
+	fmt.Printf("eventHash: %x\n", eventHash)
 }

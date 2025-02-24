@@ -1,0 +1,2 @@
+/usr/bin/ar qc libml_dsa_static_87.a CMakeFiles/ml_dsa_static_87.dir/ntt.c.o CMakeFiles/ml_dsa_static_87.dir/packing.c.o CMakeFiles/ml_dsa_static_87.dir/poly.c.o CMakeFiles/ml_dsa_static_87.dir/polyvec.c.o CMakeFiles/ml_dsa_static_87.dir/reduce.c.o CMakeFiles/ml_dsa_static_87.dir/rounding.c.o CMakeFiles/ml_dsa_static_87.dir/sign.c.o CMakeFiles/ml_dsa_static_87.dir/symmetric-shake.c.o
+/usr/bin/ranlib libml_dsa_static_87.a
