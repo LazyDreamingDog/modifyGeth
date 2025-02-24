@@ -167,6 +167,8 @@ type (
 	PostQuanPubChange struct {
 		account *common.Address
 		prev    []byte
+	}
+
 	// Changes to the contract storage trie.
 	contractCallCountChange struct {
 		account  *common.Address

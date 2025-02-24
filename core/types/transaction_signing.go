@@ -279,20 +279,20 @@ func (s cancunSigner) SignatureValues(tx *Transaction, sig []byte) (R, S, V *big
 // Hash returns the hash to be signed by the sender.
 // It does not uniquely identify the transaction.
 func (s cancunSigner) Hash(tx *Transaction) common.Hash {
-	if tx.Type() == SystemTxType {
-    return prefixedRlpHash(
-			tx.Type(),
-			[]interface{}{
-				s.chainId,
-				tx.Nonce(),
-				tx.GasPrice(),
-				tx.Gas(),
-				tx.To(),
-				tx.Value(),
-				tx.Data(),
-				tx.SystemFlag(),
-			})
-	}
+	// if tx.Type() == SystemTxType {
+	// return prefixedRlpHash(
+	// 		tx.Type(),
+	// 		[]interface{}{
+	// 			s.chainId,
+	// 			tx.Nonce(),
+	// 			tx.GasPrice(),
+	// 			tx.Gas(),
+	// 			tx.To(),
+	// 			tx.Value(),
+	// 			tx.Data(),
+	// 			tx.SystemFlag(),
+	// 		})
+	// }
 
 	if tx.Type() == DepositTxType {
 
