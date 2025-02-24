@@ -568,31 +568,38 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 		// Increment the nonce for the next transaction
 		st.state.SetNonce(msg.From, st.state.GetNonce(sender.Address())+1)
 
-		// // new transaction execute logic
-		// if num := isSystemTx(st.msg); num > 0 {
-		// 	log.Info("System transaction", "from", st.msg.From.Hex(), "to", st.msg.To.Hex(), "value", st.msg.Value)
-		// 	switch num {
-		// 	case 1:
-		// 		log.Info("System transaction", "num=1,do nothing")
-		// 	case 2:
-		// 		// data= 0x0D06,表示是由转账区过来的提现交易
-		// 		log.Info("System transaction", "num=2", "data", st.msg.Data)
-		// 		st.state.AddBalance(*st.msg.To, uint256.MustFromBig(st.msg.Value))
-		// 	default:
-		// 		log.Info("System transaction", "num", num)
-		// 	}
-		// 	return &ExecutionResult{
-		// 		UsedGas:     0,
-		// 		RefundedGas: 0,
-		// 		Err:         nil,
-		// 		ReturnData:  nil,
-		// 	}, nil
-		// }
+		//
+		if isMinerGetAnnualFeeTx(st.msg) {
+			log.Info("Miner get annual fee transaction", "from", st.msg.From.Hex(), "to", st.msg.To.Hex(), "value", st.msg.Value)
+
+		}
 
 		// TODO:如果是合约质押交易，则读取状态修改即可。
 		if isContractStakeTx(st.msg) {
 			log.Info("Contract stake transaction", "from", st.msg.From.Hex(), "to", st.msg.To.Hex(), "value", st.msg.Value)
+			// 比较质押者的余额是否足够
+			if st.state.GetBalance(*st.msg.InvestorAddress).Cmp(uint256.NewInt(msg.StakedAmount.Uint64())) < 0 {
+				return nil, fmt.Errorf("%w: address %v", ErrInsufficientFundsForStake, msg.InvestorAddress.Hex())
+			}
+			// 如果够，扣除质押者的余额
+			st.state.SubBalance(*st.msg.InvestorAddress, uint256.NewInt(msg.StakedAmount.Uint64()))
 		}
+
+		// if isContractDepositTx(st.msg) {
+		// 	log.Info("Contract deposit transaction", "from", st.msg.From.Hex(), "to", st.msg.To.Hex(), "value", st.msg.Value)
+		// 	// 返回质押者的余额
+		// 	// 读取data的20-40字节作为质押者的地址
+		// 	investorAddress := common.BytesToAddress(st.msg.Data[20:40])
+		// 	log.Info("investorAddress", "address", investorAddress.Hex())
+		// 	// 读取db中的质押信息！！！！拿不到。。
+		// 	// pledgeInfo, err :=
+		// 	// if err != nil {
+		// 	// log.Error("Failed to get pledge info", "contractAddress", investorAddress, "err", err)
+		// 	// return nil, err
+		// 	// }
+		// 	// 返回质押者的余额
+		// 	// st.state.AddBalance(investorAddress, pledgeInfo.StakedAmount)
+		// }
 
 		if isCGIToPUNKTx(st.msg) {
 			log.Info("CGI to PUNK transaction", "from", st.msg.From.Hex())
@@ -859,6 +866,26 @@ func isCGIToPUNKTx(msg *Message) bool {
 
 func isContractStakeTx(msg *Message) bool {
 	if msg.StakedAmount != nil && msg.StakedTime != 0 {
+		return true
+	}
+	return false
+}
+
+func isContractDepositTx(msg *Message) bool {
+	if msg.Data == nil || len(msg.Data) < 3 {
+		return false
+	}
+	if msg.Data[0] == 0x0D && msg.Data[1] == 0x09 {
+		return true
+	}
+	return false
+}
+
+func isMinerGetAnnualFeeTx(msg *Message) bool {
+	if msg.Data == nil || len(msg.Data) < 3 {
+		return false
+	}
+	if msg.Data[0] == 0x0D && msg.Data[1] == 0x0A {
 		return true
 	}
 	return false
