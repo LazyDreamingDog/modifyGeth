@@ -102,3 +102,20 @@ func TestGetInterest(t *testing.T) {
 
 	t.Logf("StateDb: %s", stateDb)
 }
+
+// 测试获取区块链的Pow难度
+func TestGetPowDifficulty(t *testing.T) {
+	blockNumber := "latest"
+	rpcResp, err := sendRPCRequest(rpcUrl, "eth_getPowDifficulty", []interface{}{blockNumber})
+	if err != nil {
+		t.Fatalf("Failed to send request: %v", err)
+	}
+
+	var pd string
+	err = json.Unmarshal(rpcResp.Result, &pd)
+	if err != nil {
+		t.Fatalf("Failed to unmarshal result: %v", err)
+	}
+
+	t.Logf("PowDifficulty: %s", pd)
+}
