@@ -1,0 +1,2 @@
+/usr/bin/ar qc librandombytes.a CMakeFiles/randombytes.dir/randombytes.c.o
+/usr/bin/ranlib librandombytes.a

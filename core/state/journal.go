@@ -163,7 +163,52 @@ type (
 		account       *common.Address
 		key, prevalue common.Hash
 	}
+
+	PostQuanPubChange struct {
+		account *common.Address
+		prev    []byte
+	// Changes to the contract storage trie.
+	contractCallCountChange struct {
+		account  *common.Address
+		prevalue *big.Int
+	}
+
+	totalNumberOfGasChange struct {
+		account  *common.Address
+		prevalue *uint256.Int
+	}
+
+	totalValueTxChange struct {
+		account  *common.Address
+		prevalue *uint256.Int
+	}
 )
+
+func (ch totalValueTxChange) revert(s *StateDB) {
+	s.getStateObject(*ch.account).SetTotalValueTx(ch.prevalue)
+}
+
+func (ch totalValueTxChange) dirtied() *common.Address {
+	return ch.account
+}
+
+func (ch totalNumberOfGasChange) revert(s *StateDB) {
+	s.getStateObject(*ch.account).SetTotalNumberOfGas(ch.prevalue)
+}
+
+func (ch totalNumberOfGasChange) dirtied() *common.Address {
+	return ch.account
+}
+
+func (ch contractCallCountChange) revert(s *StateDB) {
+	// 返回旧值（回滚）
+	s.getStateObject(*ch.account).SetContractCallCount(ch.prevalue)
+	// s.getStateObject(*ch.account).setBalance(ch.prev)
+}
+
+func (ch contractCallCountChange) dirtied() *common.Address {
+	return ch.account
+}
 
 func (ch createObjectChange) revert(s *StateDB) {
 	delete(s.stateObjects, *ch.account)
@@ -335,4 +380,12 @@ func (ch accessListAddSlotChange) revert(s *StateDB) {
 
 func (ch accessListAddSlotChange) dirtied() *common.Address {
 	return nil
+}
+
+func (ch PostQuanPubChange) revert(s *StateDB) {
+	s.getStateObject(*ch.account).setPostQuanPub(ch.prev)
+}
+
+func (ch PostQuanPubChange) dirtied() *common.Address {
+	return ch.account
 }

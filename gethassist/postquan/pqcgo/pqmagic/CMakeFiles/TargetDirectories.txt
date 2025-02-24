@@ -1,0 +1,4 @@
+/home/teddycode/Desktop/Workspace/crypto-suites/bin/webassembly/cmd/wasm/clang/pqmagic/CMakeFiles/pqcsign_wrapper.dir
+/home/teddycode/Desktop/Workspace/crypto-suites/bin/webassembly/cmd/wasm/clang/pqmagic/CMakeFiles/test_wrapper.dir
+/home/teddycode/Desktop/Workspace/crypto-suites/bin/webassembly/cmd/wasm/clang/pqmagic/CMakeFiles/edit_cache.dir
+/home/teddycode/Desktop/Workspace/crypto-suites/bin/webassembly/cmd/wasm/clang/pqmagic/CMakeFiles/rebuild_cache.dir

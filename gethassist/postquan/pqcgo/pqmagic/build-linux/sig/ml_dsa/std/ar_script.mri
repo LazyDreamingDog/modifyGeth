@@ -1,0 +1,6 @@
+CREATE libpqmagic_ml_dsa_std.a
+ADDLIB libml_dsa_static_44.a
+ADDLIB libml_dsa_static_65.a
+ADDLIB libml_dsa_static_87.a
+SAVE
+END

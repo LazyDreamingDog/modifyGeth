@@ -1,0 +1,14 @@
+# Hashes of file build rules.
+5d6377e482669d30177c2dd8a4430060 CMakeFiles/clean-all
+bca0d75f095bfd07abfcad9e12dcb4f7 CMakeFiles/pqmagic_static_target
+7b106ba9fe8a4ce41f4f22aac5da026e CMakeFiles/pqmagic_target
+d41c805edaba6033ef93043c1dbac620 sig/aigis-sig/std/CMakeFiles/aigis_sig_static_target
+f8cee1aa1ec1ba4dd236fd66c8e02bab sig/aigis-sig/std/CMakeFiles/aigis_sig_target
+57d8131589e80dbde430319d50f368e8 sig/dilithium/std/CMakeFiles/dilithium_static_target
+0b996f1dc42a2c0f4fc0603573f9d1fd sig/dilithium/std/CMakeFiles/dilithium_target
+aa28cfdaec969636cc20d1bf980fe2ec sig/ml_dsa/std/CMakeFiles/ml_dsa_static_target
+ad9b1a70a79ddccffb226232ac8204c2 sig/ml_dsa/std/CMakeFiles/ml_dsa_target
+2ae77e35598bbe2c84fbac42fc438b6b sig/slh_dsa/std/CMakeFiles/slh_dsa_static_target
+64fecab53b6deba2ab9a04c303d6037a sig/slh_dsa/std/CMakeFiles/slh_dsa_target
+a084666068491999262890c695278ead sig/sphincs-a/std/CMakeFiles/sphincs_a_static_target
+632d73df92394f54d448645356688c8e sig/sphincs-a/std/CMakeFiles/sphincs_a_target

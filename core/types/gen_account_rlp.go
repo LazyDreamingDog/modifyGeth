@@ -30,6 +30,25 @@ func (obj *StateAccount) EncodeRLP(_w io.Writer) error {
 		}
 		w.WriteBigInt(obj.LastBlockNumber)
 	}
+	w.WriteBytes(obj.LastPostQuanPub)
+	if obj.TotalNumberOfGas == nil {
+		w.Write(rlp.EmptyString)
+	} else {
+		w.WriteUint256(obj.TotalNumberOfGas)
+	}
+	if obj.ContractCallCount == nil {
+		w.Write(rlp.EmptyString)
+	} else {
+		if obj.ContractCallCount.Sign() == -1 {
+			return rlp.ErrNegativeBigInt
+		}
+		w.WriteBigInt(obj.ContractCallCount)
+	}
+	if obj.TotalValueTx == nil {
+		w.Write(rlp.EmptyString)
+	} else {
+		w.WriteUint256(obj.TotalValueTx)
+	}
 	w.ListEnd(_tmp0)
 	return w.Flush()
 }

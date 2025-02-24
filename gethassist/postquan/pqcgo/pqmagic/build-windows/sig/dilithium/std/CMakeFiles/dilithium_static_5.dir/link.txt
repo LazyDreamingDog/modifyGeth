@@ -1,0 +1,2 @@
+/usr/bin/x86_64-w64-mingw32-ar qc libdilithium_static_5.a CMakeFiles/dilithium_static_5.dir/ntt.c.obj CMakeFiles/dilithium_static_5.dir/packing.c.obj CMakeFiles/dilithium_static_5.dir/poly.c.obj CMakeFiles/dilithium_static_5.dir/polyvec.c.obj CMakeFiles/dilithium_static_5.dir/reduce.c.obj CMakeFiles/dilithium_static_5.dir/rounding.c.obj CMakeFiles/dilithium_static_5.dir/sign.c.obj CMakeFiles/dilithium_static_5.dir/symmetric-shake.c.obj
+/usr/bin/x86_64-w64-mingw32-ranlib libdilithium_static_5.a

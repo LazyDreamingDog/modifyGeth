@@ -90,15 +90,33 @@ func TestDecode(t *testing.T) {
 }
 
 func TestParseEvent(t *testing.T) {
-	data := "0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000036164640000000000000000000000000000000000000000000000000000000000"
-	var name string
-	err := CodeStorageABI.UnpackIntoInterface(&name, "codeUploaded", common.Hex2Bytes(data))
-	if err != nil {
-		t.Error(err)
-		t.Fail()
-	} else {
-		t.Log(name)
-	}
+	t.Run("codeupload", func(t *testing.T) {
+		data := "0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000036164640000000000000000000000000000000000000000000000000000000000"
+		var name string
+		err := CodeStorageABI.UnpackIntoInterface(&name, "codeUploaded", common.Hex2Bytes(data))
+		if err != nil {
+			t.Error(err)
+			t.Fail()
+		} else {
+			t.Log(name)
+		}
+	})
+
+	t.Run("neg", func(t *testing.T) {
+		// Attention data must delete "0x"
+		data := "00000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000100000000000000000000000057f96028ba3258ebfb4940d67443967cf23e3fc4000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000de"
+		vmap := make(map[string]interface{})
+		err := CoinBaseABI.UnpackIntoMap(vmap, "CoinbaseAdded", common.Hex2Bytes(data))
+		if err != nil {
+			t.Fatal("abi decode:", err)
+		}
+		t.Log(vmap)
+
+		// selectedAddresses := vmap["selectedAddresses"].([]common.Address)
+		// rewards := vmap["rewards"].([]*big.Int)
+		// t.Log("selectedAddresses:", selectedAddresses)
+		// t.Log("rewards:", rewards)
+	})
 }
 
 func TestMethodID(t *testing.T) {

@@ -189,11 +189,15 @@ func NewCancunSigner(chainId *big.Int) Signer {
 
 func (s cancunSigner) Sender(tx *Transaction) (common.Address, error) {
 	if tx.Type() == DynamicCryptoTxType {
-		// TODO：complete logic
-		fmt.Println("cancun sender invoke dynamic crypto")
+		V, R, S := tx.RawSignatureValues()
+		V = new(big.Int).Add(V, big.NewInt(27))
+		if tx.ChainId().Cmp(s.chainId) != 0 {
+			return common.Address{}, fmt.Errorf("%w: have %d want %d", ErrInvalidChainId, tx.ChainId(), s.chainId)
+		}
+		return recoverPlain(s.Hash(tx), R, S, V, true)
 	}
 
-	if tx.Type() == SystemTxType {
+	if tx.Type() == DepositTxType {
 		V, R, S := tx.RawSignatureValues()
 		// POW txs are defined to use 0 and 1 as their recovery
 		// id, add 27 to become equivalent to unprotected Homestead signatures.
@@ -234,7 +238,7 @@ func (s cancunSigner) Equal(s2 Signer) bool {
 }
 
 func (s cancunSigner) SignatureValues(tx *Transaction, sig []byte) (R, S, V *big.Int, err error) {
-	txdata0, ok0 := tx.inner.(*SystemTx)
+	txdata0, ok0 := tx.inner.(*DepositTx)
 	if ok0 {
 		// Check that chain ID of tx matches the signer. We also accept ID zero here,
 		// because it indicates that the chain ID was not specified in the tx.
@@ -275,13 +279,8 @@ func (s cancunSigner) SignatureValues(tx *Transaction, sig []byte) (R, S, V *big
 // Hash returns the hash to be signed by the sender.
 // It does not uniquely identify the transaction.
 func (s cancunSigner) Hash(tx *Transaction) common.Hash {
-	if tx.Type() == DynamicCryptoTxType {
-		// TODO：complete logic
-		fmt.Println("cancun hash invoke dynamic crypto")
-	}
-
 	if tx.Type() == SystemTxType {
-		return prefixedRlpHash(
+    return prefixedRlpHash(
 			tx.Type(),
 			[]interface{}{
 				s.chainId,
@@ -292,6 +291,26 @@ func (s cancunSigner) Hash(tx *Transaction) common.Hash {
 				tx.Value(),
 				tx.Data(),
 				tx.SystemFlag(),
+			})
+	}
+
+	if tx.Type() == DepositTxType {
+
+		return prefixedRlpHash(
+			tx.Type(),
+			[]interface{}{
+				s.chainId,
+				tx.Nonce(),
+				tx.GasPrice(),
+				tx.Gas(),
+				tx.To(),
+				tx.Value(),
+				tx.Data(),
+				tx.DeployerAddress(),
+				tx.InvestorAddress(),
+				tx.BeneficiaryAddress(),
+				tx.StakedAmount(),
+				tx.StakedTime(),
 			})
 	}
 
@@ -307,6 +326,26 @@ func (s cancunSigner) Hash(tx *Transaction) common.Hash {
 				tx.Value(),
 				tx.Data(),
 				tx.HashNonce(),
+			})
+	}
+
+	if tx.Type() == DynamicCryptoTxType {
+		return prefixedRlpHash(
+			tx.Type(),
+			[]interface{}{
+				s.chainId,
+				tx.Nonce(),
+				tx.GasTipCap(),
+				tx.GasFeeCap(),
+				tx.Gas(),
+				tx.To(),
+				tx.Value(),
+				tx.Data(),
+				tx.AccessList(),
+				tx.CryptoType(),
+				tx.SignatureData(),
+				tx.PostAddress(),
+				tx.PublicKey(),
 			})
 	}
 
@@ -419,7 +458,7 @@ func (s eip2930Signer) Sender(tx *Transaction) (common.Address, error) {
 	fmt.Println("eip2930 sender invoke")
 	V, R, S := tx.RawSignatureValues()
 	switch tx.Type() {
-	case SystemTxType:
+	case DepositTxType:
 		V, R, S := tx.RawSignatureValues()
 		// POW txs are defined to use 0 and 1 as their recovery
 		// id, add 27 to become equivalent to unprotected Homestead signatures.
@@ -429,8 +468,12 @@ func (s eip2930Signer) Sender(tx *Transaction) (common.Address, error) {
 		}
 		return recoverPlain(s.Hash(tx), R, S, V, true)
 	case DynamicCryptoTxType:
-		// TODO：complete logic
-		fmt.Println("eip2930 sender invoke dynamic crypto")
+		V, R, S := tx.RawSignatureValues()
+		V = new(big.Int).Add(V, big.NewInt(27))
+		if tx.ChainId().Cmp(s.chainId) != 0 {
+			return common.Address{}, fmt.Errorf("%w: have %d want %d", ErrInvalidChainId, tx.ChainId(), s.chainId)
+		}
+		return recoverPlain(s.Hash(tx), R, S, V, true)
 	case PowTxType:
 		V, R, S := tx.RawSignatureValues()
 		// POW txs are defined to use 0 and 1 as their recovery
@@ -457,7 +500,7 @@ func (s eip2930Signer) Sender(tx *Transaction) (common.Address, error) {
 
 func (s eip2930Signer) SignatureValues(tx *Transaction, sig []byte) (R, S, V *big.Int, err error) {
 	switch txdata := tx.inner.(type) {
-	case *SystemTx:
+	case *DepositTx:
 		if txdata.ChainID.Sign() != 0 && txdata.ChainID.Cmp(s.chainId) != 0 {
 			return nil, nil, nil, fmt.Errorf("%w: have %d want %d", ErrInvalidChainId, txdata.ChainID, s.chainId)
 		}
@@ -465,8 +508,13 @@ func (s eip2930Signer) SignatureValues(tx *Transaction, sig []byte) (R, S, V *bi
 		V = big.NewInt(int64(sig[64]))
 		return R, S, V, nil
 	case *DynamicCryptoTx:
-		// TODO：complete logic
-		fmt.Println("eip2930 signature values invoke dynamic crypto")
+		if txdata.ChainID.Sign() != 0 && txdata.ChainID.Cmp(s.chainId) != 0 {
+			return nil, nil, nil, fmt.Errorf("%w: have %d want %d", ErrInvalidChainId, txdata.ChainID, s.chainId)
+		}
+		R, S, _ = decodeSignature(sig)
+		V = big.NewInt(int64(sig[64]))
+		return R, S, V, nil
+
 	case *PowTx:
 		// Check that chain ID of tx matches the signer. We also accept ID zero here,
 		// because it indicates that the chain ID was not specified in the tx.
@@ -496,7 +544,7 @@ func (s eip2930Signer) SignatureValues(tx *Transaction, sig []byte) (R, S, V *bi
 // It does not uniquely identify the transaction.
 func (s eip2930Signer) Hash(tx *Transaction) common.Hash {
 	switch tx.Type() {
-	case SystemTxType:
+	case DepositTxType:
 		return prefixedRlpHash(
 			tx.Type(),
 			[]interface{}{
@@ -507,7 +555,11 @@ func (s eip2930Signer) Hash(tx *Transaction) common.Hash {
 				tx.To(),
 				tx.Value(),
 				tx.Data(),
-				tx.SystemFlag(),
+				tx.DeployerAddress(),
+				tx.InvestorAddress(),
+				tx.BeneficiaryAddress(),
+				tx.StakedAmount(),
+				tx.StakedTime(),
 			})
 	case DynamicCryptoTxType:
 		return prefixedRlpHash(
@@ -524,7 +576,7 @@ func (s eip2930Signer) Hash(tx *Transaction) common.Hash {
 				tx.AccessList(),
 				tx.CryptoType(),
 				tx.SignatureData(),
-				tx.PublicKeyIndex(),
+				tx.PostAddress(),
 				tx.PublicKey(),
 			})
 	case PowTxType:

@@ -64,10 +64,21 @@ type TransactionArgs struct {
 	HashNonce *hexutil.Big `json:"hashNonce,omitempty"`
 
 	// Introduced by DynamicCryptoTxType
-	CryptoType     *hexutil.Bytes  `json:"cryptoType,omitempty"`
-	SignatureData  *hexutil.Bytes  `json:"signatureData,omitempty"`
-	PublicKey      *hexutil.Bytes  `json:"publicKey,omitempty"`
-	PublicKeyIndex *hexutil.Uint64 `json:"publicKeyIndex,omitempty"`
+
+	CryptoType    *hexutil.Bytes  `json:"cryptoType,omitempty"`
+	SignatureData *hexutil.Bytes  `json:"signatureData,omitempty"`
+	PublicKey     *hexutil.Bytes  `json:"publicKey,omitempty"`
+	PostAddress   *common.Address `json:"postAddress,omitempty"`
+
+	
+
+	// Introduced by DepositTxType
+	DeployerAddress    *common.Address `json:"deployerAddress,omitempty"`
+	InvestorAddress    *common.Address `json:"investorAddress,omitempty"`
+	BeneficiaryAddress *common.Address `json:"beneficiaryAddress,omitempty"`
+	StakedAmount       *hexutil.Big    `json:"stakedAmount,omitempty"`
+	StakedTime         *hexutil.Uint64 `json:"stakedTime,omitempty"`
+
 }
 
 // from retrieves the transaction sender address.
@@ -348,12 +359,21 @@ func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (*
 	if args.PublicKey != nil {
 		publicKey = *args.PublicKey
 	}
-	publicKeyIndex := uint64(0)
-	if args.PublicKeyIndex != nil {
-		publicKeyIndex = uint64(*args.PublicKeyIndex)
+	postAddress := &common.Address{}
+	if args.PostAddress != nil {
+		postAddress = args.PostAddress
+	}
+	stakedAmount := new(big.Int)
+	if args.StakedAmount != nil {
+		stakedAmount = args.StakedAmount.ToInt()
+	}
+	stakedTime := uint64(0)
+	if args.StakedTime != nil {
+		stakedTime = uint64(*args.StakedTime)
 	}
 
 	msg := &core.Message{
+
 		From:              addr,
 		To:                args.To,
 		Value:             value,
@@ -370,7 +390,13 @@ func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (*
 		CryptoType:        cryptoType,
 		SignatureData:     signatureData,
 		PublicKey:         publicKey,
-		PublicKeyIndex:    publicKeyIndex,
+		PostAddress:       postAddress,
+		DeployerAddress:    args.DeployerAddress,
+		InvestorAddress:    args.InvestorAddress,
+		BeneficiaryAddress: args.BeneficiaryAddress,
+		StakedAmount:       stakedAmount,
+		StakedTime:         stakedTime,
+
 	}
 	return msg, nil
 }
@@ -380,7 +406,30 @@ func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (*
 func (args *TransactionArgs) toTransaction() *types.Transaction {
 	var data types.TxData
 	switch {
-	case args.PublicKey != nil && args.PublicKeyIndex != nil:
+
+	case args.DeployerAddress != nil:
+		al := types.AccessList{}
+		if args.AccessList != nil {
+			al = *args.AccessList
+		}
+		data = &types.DepositTx{
+			To:                 args.To,
+			ChainID:            (*big.Int)(args.ChainID),
+			Nonce:              uint64(*args.Nonce),
+			Gas:                uint64(*args.Gas),
+			GasFeeCap:          (*big.Int)(args.MaxFeePerGas),
+			GasTipCap:          (*big.Int)(args.MaxPriorityFeePerGas),
+			Value:              (*big.Int)(args.Value),
+			Data:               args.data(),
+			AccessList:         al,
+			DeployerAddress:    args.DeployerAddress,
+			InvestorAddress:    args.InvestorAddress,
+			BeneficiaryAddress: args.BeneficiaryAddress,
+			StakedAmount:       (*big.Int)(args.StakedAmount),
+			StakedTime:         uint64(*args.StakedTime),
+		}
+    
+  case args.PublicKey != nil && args.PostAddress != nil:
 		al := types.AccessList{}
 		if args.AccessList != nil {
 			al = *args.AccessList

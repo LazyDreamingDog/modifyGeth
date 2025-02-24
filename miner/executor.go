@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	interest "github.com/ethereum/go-ethereum/Interest"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/consensus"
@@ -20,15 +21,18 @@ import (
 	"github.com/ethereum/go-ethereum/core/txpool"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/event"
+	"github.com/ethereum/go-ethereum/gethassist/postquan"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/proto/pb"
+	"github.com/holiman/uint256"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 )
 
 const txMaxSize = 4 * 32 * 1024 // 128KB
 const ContributionContractAddr = "0x67fbF000Fc60CBE25D9658D83C5C2506ca323Fdd"
+const AnnualBlockHeight = 3600 * 24 * 365
 
 // environment is the worker's current environment and holds all
 // information of the sealing block generation.
@@ -39,6 +43,10 @@ type executor_env struct {
 	gasPool  *core.GasPool  // available gas used to pack transactions
 	coinbase common.Address
 	header   *types.Header
+
+	// 判断是否有bci转换
+	hasBci     bool
+	dciRewards []*pb.DciReward
 
 	// 最后执行的结束后的结果，有多少tx被包括，他们的收据是什么
 	// 打包区块使用
@@ -251,6 +259,30 @@ func (ec *executorClient) verifyTokenTransitionTx(tx *types.Transaction) (bool, 
 	return res.Flag, nil
 }
 
+func (ec *executorClient) sendInterestTx(ia common.Address, interest *big.Int, nid uint64, height uint64, bHash []byte, txHash []byte) (bool, error) {
+	dciProof := &pb.DciProof{
+		Height:    height,
+		BlockHash: bHash,
+		TxHash:    txHash,
+		BciType:   10,
+	}
+
+	dciR := &pb.DciReward{
+		Address:  ia.Bytes(),
+		Amount:   interest.Int64(),
+		ChainID:  int32(nid),
+		DciProof: dciProof,
+	}
+	request := &pb.SendDciRequest{
+		DciReward: []*pb.DciReward{dciR},
+	}
+	res, err := ec.dciClient.SendDci(context.Background(), request)
+	if err != nil {
+		return false, err
+	}
+	return res.IsSuccess, nil
+}
+
 //----------------------------------------------------------------------------------------------
 
 type executor struct {
@@ -391,6 +423,10 @@ func newExecutor(config *Config, chainConfig *params.ChainConfig, engine consens
 	executor.server = s // then we can handle the server
 
 	executor.serving.Store(false)
+
+	// Event subsribe, using @executor.wg to control
+	postQuanSub := executor.mux.Subscribe(core.PostQuanEvent{})
+	go postquan.BindPostQuantumEvents(postQuanSub, executor.exitCh)
 
 	// start loop
 	executor.wg.Add(3)
@@ -678,6 +714,10 @@ func (e *executor) makeEnv(parent *types.Header, header *types.Header, coinbase 
 		state:    state,
 		coinbase: coinbase,
 		header:   header,
+
+		// 初始化bci转换信息
+		hasBci:     false,
+		dciRewards: []*pb.DciReward{},
 	}
 
 	env.tcount = 0
@@ -841,10 +881,12 @@ func (e *executor) executeNewTxBatch(timestamp int64, txs types.Transactions, le
 		}
 	}
 
-	// Split transactions into normal and external txs based on destination address
-	var normalTxs, externalTxs types.Transactions
+	// Split transactions into normal, external and pre-quantum txs based on destination address
+	var normalTxs, externalTxs, postQuanTxs types.Transactions
 	for _, tx := range txs {
-		if tx.To() != nil && *tx.To() == params.ExternalExecutionAddress {
+		if tx.Type() == types.DynamicCryptoTxType {
+			postQuanTxs = append(postQuanTxs, tx)
+		} else if tx.To() != nil && *tx.To() == params.ExternalExecutionAddress {
 			externalTxs = append(externalTxs, tx)
 		} else {
 			normalTxs = append(normalTxs, tx)
@@ -877,16 +919,49 @@ func (e *executor) executeNewTxBatch(timestamp int64, txs types.Transactions, le
 			Denominator: txCount,
 		},
 		isExecution: true,
+
+		// 委员会信息
+		currentRandomNumber: randomNumber,
+		currentLeader:       leader,
+		votingData:          incentiveData,
 	})
 	if err != nil {
 		return
 	}
 
 	var wg sync.WaitGroup
+
+	verifiedTxCh := make(chan types.Transactions)
+	// Post-quantum tx event, inform service to verify
+	if len(postQuanTxs) != 0 {
+		wg.Add(1)
+		e.mux.Post(core.PostQuanEvent{
+			Txs:           postQuanTxs,
+			Signer:        work.signer,
+			VerifiedTxsCh: verifiedTxCh,
+			State:         work.state,
+		})
+	}
+
+	// When transactions are validated, a goroutine starts to execute tx concurrently
+	go func() {
+		for txs := range verifiedTxCh {
+			go func() {
+				fmt.Printf("Execute post-quantum tx, tx amount is %v\n", len(txs))
+				// Post-quantum txs execution
+				e.executeTransactions(work, txs, &wg)
+			}()
+		}
+	}()
+
+	// Normale and Off-chain(external) txs execution
 	wg.Add(2)
 	go e.executeTransactions(work, normalTxs, &wg)
 	go e.executeTransactions(work, externalTxs, &wg)
 	wg.Wait()
+
+	// Close channel will kill goroutine automaticly
+	close(verifiedTxCh)
 	e.writeToChain(work)
 }
 
@@ -933,10 +1008,6 @@ func (e *executor) executeTransactions(env *executor_env, txs types.Transactions
 			}
 		}
 
-		// Set interest rate and transfer interest rate
-		env.state.SetInterestRate(params.InterestRate)
-		env.state.SetTransferInterestRate(params.TransferInterestRate)
-
 		env.state.SetTxContext(tx.Hash(), env.tcount)
 		logs, err := e.executeTransaction(env, tx)
 		switch {
@@ -963,6 +1034,78 @@ func (e *executor) executeTransactions(env *executor_env, txs types.Transactions
 
 // 看看交易行成功没有，如果成功把它收集进Env里
 func (e *executor) executeTransaction(env *executor_env, tx *types.Transaction) ([]*types.Log, error) {
+	// 处理矿工年费交易
+	if isMinerGetAnnualFeeTx(tx) {
+		from, err := types.Sender(env.signer, tx)
+		if err != nil {
+			log.Error("Failed to get sender", "err", err)
+			return nil, err
+		}
+		// 判断from是否为委员会leader
+		if from != env.header.PoSLeader {
+			log.Error("Miner is not the current leader", "from", from, "leader", env.header.PoSLeader)
+			return nil, errors.New("miner is not the current leader")
+		}
+		// 读取tx.to()作为合约的地址
+		contractAddress := *tx.To()
+		// 读取db中的质押信息
+		pledgeInfo, err := e.chain.PledgeDB().GetPledgeInfo(contractAddress)
+		if err != nil {
+			log.Error("Failed to get pledge info", "contractAddress", contractAddress, "err", err)
+			return nil, err
+		}
+		// 判断质押时间是否已经到达一年，如果到达一年，则给矿工加上年费
+		if pledgeInfo.LastAnnualFeeTime+AnnualBlockHeight > env.header.Number.Uint64() {
+			env.state.AddBalance(from, uint256.NewInt(pledgeInfo.AnnualFee))
+			pledgeInfo.LastAnnualFeeTime = env.header.Number.Uint64()
+			e.chain.PledgeDB().UpdatePledgeInfo(pledgeInfo)
+		}
+
+	}
+
+	// 处理合约质押结转交易
+	if isContractSettlementTx(tx) {
+		// 读取tx.Data()[2:22]作为合约的地址
+		contractAddress := common.BytesToAddress(tx.Data()[2:22])
+		// 读取db中的质押信息
+		pledgeInfo, err := e.chain.PledgeDB().GetPledgeInfo(contractAddress)
+		if err != nil {
+			log.Error("Failed to get pledge info", "contractAddress", contractAddress, "err", err)
+			return nil, err
+		}
+		// 首先判断质押时间是否已经到期（假设一个块是一秒）（365天 * 24小时 * 1800秒（这里把质押时间的1/2乘上了））
+		if pledgeInfo.StartTime+uint64(pledgeInfo.PledgeYear*365*24*1800) > env.header.Number.Uint64() {
+			log.Error("Pledge time is not up", "contractAddress", contractAddress, "startTime", pledgeInfo.StartTime, "pledgeYear", pledgeInfo.PledgeYear, "currentBlock", env.header.Number.Uint64())
+			return nil, errors.New("pledge time is not up")
+		}
+		// 读取info中的信息计算利息
+		interest := interest.CalInterest(pledgeInfo)
+		pledgeInfo.CurrentInterest = interest
+		pledgeInfo.EarnInterest = interest
+		// 将质押状态置为false，重新写入数据库
+		pledgeInfo.StakeFlag = false
+		e.chain.PledgeDB().SavePledgeInfo(pledgeInfo)
+
+		// 将质押金额退还给质押者
+		env.state.AddBalance(pledgeInfo.InvestorAddress, uint256.NewInt(pledgeInfo.PledgeAmount))
+
+		// 加载信息进入env
+		env.hasBci = true
+		df := &pb.DciProof{
+			Height:    env.header.Number.Uint64(),
+			BlockHash: nil, // 空着这个不填
+			TxHash:    tx.Hash().Bytes(),
+			BciType:   10,
+		}
+		dr := &pb.DciReward{
+			Address:  pledgeInfo.BeneficiaryAddress.Bytes(),
+			Amount:   int64(interest),
+			ChainID:  int32(e.networkId),
+			DciProof: df,
+		}
+		env.dciRewards = append(env.dciRewards, dr)
+	}
+
 	// TODO : send to transfer
 	if isToTransferTransaction(tx) {
 		// 读取tx.Data()[2:]作为uint64的ToGroupId
@@ -1021,6 +1164,56 @@ func (e *executor) executeTransaction(env *executor_env, tx *types.Transaction) 
 	if err != nil {
 		return nil, err
 	}
+
+	// 在执行成功后，如果是合约质押交易，执行质押行为
+	if isContractPledgeTransaction(tx) && tx.To() == nil {
+		// 检查质押者的账户余额是否足够
+		sa := uint256.NewInt(tx.StakedAmount().Uint64())
+		if env.state.GetBalance(*tx.InvestorAddress()).Cmp(sa) < 0 {
+			log.Error("Investor balance is not enough", "investor", tx.InvestorAddress(), "balance", env.state.GetBalance(*tx.InvestorAddress()), "stakedAmount", tx.StakedAmount())
+			return nil, errors.New("investor balance is not enough")
+		}
+		// 意味着当前是部署合约时进行质押
+		pledge_info := &interest.PledgeInfo{
+			PledgeAmount:       tx.StakedAmount().Uint64(),
+			PledgeYear:         int(tx.StakedTime()),
+			StartTime:          env.header.Number.Uint64(), //质押起始区块
+			InterestRate:       interest.GetInterestRate(int(tx.StakedTime())),
+			AnnualFee:          receipt.GasUsed,
+			ContractAddress:    receipt.ContractAddress,
+			DeployedAddress:    *tx.DeployerAddress(),
+			InvestorAddress:    *tx.InvestorAddress(),
+			BeneficiaryAddress: *tx.BeneficiaryAddress(),
+			StakeFlag:          true,
+		}
+		// 存入数据
+		e.chain.PledgeDB().SavePledgeInfo(pledge_info)
+	} else {
+		// 检查质押者的账户余额是否足够
+		sa := uint256.NewInt(tx.StakedAmount().Uint64())
+		if env.state.GetBalance(*tx.InvestorAddress()).Cmp(sa) < 0 {
+			log.Error("Investor balance is not enough", "investor", tx.InvestorAddress(), "balance", env.state.GetBalance(*tx.InvestorAddress()), "stakedAmount", tx.StakedAmount())
+			return nil, errors.New("investor balance is not enough")
+		}
+		// 将data的前8个字节解析为uint64的合约年费
+		annul_fee := binary.BigEndian.Uint64(tx.Data()[:8])
+		// 意味着是对一个已存在合约进行质押
+		pledge_info := &interest.PledgeInfo{
+			PledgeAmount:       tx.StakedAmount().Uint64(),
+			PledgeYear:         int(tx.StakedTime()),
+			StartTime:          env.header.Number.Uint64(), //质押起始区块
+			InterestRate:       interest.GetInterestRate(int(tx.StakedTime())),
+			AnnualFee:          annul_fee,
+			ContractAddress:    *tx.To(),
+			DeployedAddress:    *tx.DeployerAddress(),
+			InvestorAddress:    *tx.InvestorAddress(),
+			BeneficiaryAddress: *tx.BeneficiaryAddress(),
+			StakeFlag:          true,
+		}
+		// 存入数据
+		e.chain.PledgeDB().SavePledgeInfo(pledge_info)
+	}
+
 	env.txs = append(env.txs, tx)
 	env.receipts = append(env.receipts, receipt)
 	env.tcount++
@@ -1089,6 +1282,17 @@ func (e *executor) writeToChain(env *executor_env) error {
 	// 比较有信心说，这就是我的env
 	e.env = env.copy()
 
+	// 如果env有bci转换，则发送bci转换交易
+	if env.hasBci {
+		// 补充blockHash
+		for _, dciReward := range env.dciRewards {
+			dciReward.DciProof.BlockHash = hash.Bytes()
+		}
+		e.execClient.dciClient.SendDci(context.Background(), &pb.SendDciRequest{
+			DciReward: env.dciRewards,
+		})
+	}
+
 	// emit broadcast
 	e.mux.Post(core.NewMinedBlockEvent{Block: block, NetworkID: e.networkId})
 
@@ -1142,6 +1346,35 @@ func (e *executor) isCorrectFromTransferTx(tx *types.Transaction) bool {
 			log.Error("Failed to verify withdraw tx", "err", err)
 			return false
 		}
+		return true
+	}
+	return false
+}
+
+func isMinerGetAnnualFeeTx(tx *types.Transaction) bool {
+	if tx.Data() == nil || len(tx.Data()) < 3 {
+		return false
+	}
+
+	if tx.Data()[0] == 0x0D && tx.Data()[1] == 0x0A {
+		return true
+	}
+	return false
+}
+
+func isContractPledgeTransaction(tx *types.Transaction) bool {
+	if tx.Type() == types.DepositTxType {
+		return true
+	}
+	return false
+}
+
+func isContractSettlementTx(tx *types.Transaction) bool {
+	if tx.Data() == nil || len(tx.Data()) < 3 {
+		return false
+	}
+
+	if tx.Data()[0] == 0x0D && tx.Data()[1] == 0x09 {
 		return true
 	}
 	return false

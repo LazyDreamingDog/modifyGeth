@@ -30,6 +30,22 @@ import (
 type StateDB interface {
 	CreateAccount(common.Address)
 
+	// TODO: 增加外部调用getStateObject方法
+	// GetStateObject(common.Address)
+	AddContractCallCount(common.Address)
+	GetContractCallCount(common.Address) *big.Int
+	SetContractCallCount(common.Address)
+
+	// TODO: 增加外部调用getStateObject方法
+	AddTotalNumberOfGas(common.Address, *uint256.Int)
+	GetTotalNumberOfGas(common.Address) *uint256.Int
+	SetTotalNumberOfGas(common.Address)
+
+	// TODO: 增加外部调用getStateObject方法
+	AddTotalValueTx(common.Address, *uint256.Int)
+	GetTotalValueTx(common.Address) *uint256.Int
+	SetTotalValueTx(common.Address)
+
 	SubBalance(common.Address, *uint256.Int)
 	AddBalance(common.Address, *uint256.Int)
 	GetBalance(common.Address) *uint256.Int
@@ -38,12 +54,10 @@ type StateDB interface {
 	SubInterest(common.Address, *uint256.Int)
 	AddInterest(common.Address, *uint256.Int)
 	GetInterest(common.Address) *uint256.Int
-	UseInterest(addr common.Address, usedInterest *uint256.Int) *uint256.Int
+	UseInterest(common.Address, *uint256.Int) *uint256.Int
 
-	SetInterestRate(uint64)
-	SetTransferInterestRate(uint64)
-	GetInterestRate() uint64
-	GetTransferInterestRate() uint64
+	GetLastPostQuanPub(common.Address) []byte
+	SetLastPostQuanPub(common.Address, []byte)
 
 	GetNonce(common.Address) uint64
 	SetNonce(common.Address, uint64)

@@ -47,10 +47,10 @@ type ValidationOptions struct {
 // This check is public to allow different transaction pools to check the basic
 // rules without duplicating code and running the risk of missed updates.
 func ValidateTransaction(tx *types.Transaction, head *types.Header, signer types.Signer, opts *ValidationOptions) error {
-	// skip system tx
-	if tx.Type() == types.SystemTxType {
-		return nil
-	}
+	// // skip system tx
+	// if tx.Type() == types.SystemTxType {
+	// 	return nil
+	// }
 	// Check if it's a PoW transaction and validate its hash against difficulty
 	if tx.Type() == types.PowTxType {
 		if head.PowDifficulty == nil {
@@ -212,10 +212,10 @@ type ValidationOptionsWithState struct {
 // This check is public to allow different transaction pools to check the stateful
 // rules without duplicating code and running the risk of missed updates.
 func ValidateTransactionWithState(tx *types.Transaction, signer types.Signer, opts *ValidationOptionsWithState) error {
-	// skip system tx
-	if tx.Type() == types.SystemTxType {
-		return nil
-	}
+	// // skip system tx
+	// if tx.Type() == types.SystemTxType {
+	// 	return nil
+	// }
 	// Ensure the transaction adheres to nonce ordering
 	from, err := signer.Sender(tx) // already validated (and cached), but cleaner to check
 	if err != nil {
