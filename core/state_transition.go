@@ -162,6 +162,12 @@ type Message struct {
 	PublicKeyIndex uint64
 	SystemFlag     uint64
 
+	DeployerAddress    *common.Address
+	InvestorAddress    *common.Address
+	BeneficiaryAddress *common.Address
+	StakedAmount       *big.Int
+	StakedTime         uint64
+
 	// if isPow is true, the message is a PoW transaction
 	// TODO: check whether it can use pow as gas.
 	IsPow bool
@@ -196,22 +202,6 @@ func (m *Message) ParseVoucher() {
 
 // TransactionToMessage converts a transaction into a Message.
 func TransactionToMessage(tx *types.Transaction, s types.Signer, baseFee *big.Int) (*Message, error) {
-	if tx.Type() == types.SystemTxType {
-		systemMsg := &Message{
-			GasLimit:          tx.Gas(),
-			GasPrice:          new(big.Int).Set(tx.GasPrice()),
-			GasFeeCap:         new(big.Int).Set(tx.GasFeeCap()),
-			GasTipCap:         new(big.Int).Set(tx.GasTipCap()),
-			From:              common.HexToAddress("0x0000000000000000000000000000000000000000"),
-			To:                tx.To(),
-			Value:             tx.Value(),
-			Data:              tx.Data(),
-			SystemFlag:        tx.SystemFlag(),
-			SkipAccountChecks: true,
-		}
-		return systemMsg, nil
-	}
-
 	msg := &Message{
 		Nonce:             tx.Nonce(),
 		GasLimit:          tx.Gas(),
@@ -568,6 +558,11 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 	)
 	if contractCreation {
 		ret, _, st.gasRemaining, vmerr = st.evm.Create(sender, msg.Data, st.gasRemaining, value)
+		// TODO:修改合约质押状态
+		if msg.DeployerAddress != nil && msg.InvestorAddress != nil && msg.BeneficiaryAddress != nil {
+			// st.state.Set
+		}
+
 		if vmerr != nil {
 			log.Error("Create vmerr", "err", vmerr)
 		}
@@ -575,26 +570,38 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 		// Increment the nonce for the next transaction
 		st.state.SetNonce(msg.From, st.state.GetNonce(sender.Address())+1)
 
-		// new transaction execute logic
-		if num := isSystemTx(st.msg); num > 0 {
-			log.Info("System transaction", "from", st.msg.From.Hex(), "to", st.msg.To.Hex(), "value", st.msg.Value)
-			switch num {
-			case 1:
-				log.Info("System transaction", "num=1,do nothing")
-			case 2:
-				// data= 0x0D06,表示是由转账区过来的提现交易
-				log.Info("System transaction", "num=2", "data", st.msg.Data)
-				st.state.AddBalance(*st.msg.To, uint256.MustFromBig(st.msg.Value))
-			default:
-				log.Info("System transaction", "num", num)
-			}
-			return &ExecutionResult{
-				UsedGas:     0,
-				RefundedGas: 0,
-				Err:         nil,
-				ReturnData:  nil,
-			}, nil
+		//
+		if isMinerGetAnnualFeeTx(st.msg) {
+			log.Info("Miner get annual fee transaction", "from", st.msg.From.Hex(), "to", st.msg.To.Hex(), "value", st.msg.Value)
+
 		}
+
+		// TODO:如果是合约质押交易，则读取状态修改即可。
+		if isContractStakeTx(st.msg) {
+			log.Info("Contract stake transaction", "from", st.msg.From.Hex(), "to", st.msg.To.Hex(), "value", st.msg.Value)
+			// 比较质押者的余额是否足够
+			if st.state.GetBalance(*st.msg.InvestorAddress).Cmp(uint256.NewInt(msg.StakedAmount.Uint64())) < 0 {
+				return nil, fmt.Errorf("%w: address %v", ErrInsufficientFundsForStake, msg.InvestorAddress.Hex())
+			}
+			// 如果够，扣除质押者的余额
+			st.state.SubBalance(*st.msg.InvestorAddress, uint256.NewInt(msg.StakedAmount.Uint64()))
+		}
+
+		// if isContractDepositTx(st.msg) {
+		// 	log.Info("Contract deposit transaction", "from", st.msg.From.Hex(), "to", st.msg.To.Hex(), "value", st.msg.Value)
+		// 	// 返回质押者的余额
+		// 	// 读取data的20-40字节作为质押者的地址
+		// 	investorAddress := common.BytesToAddress(st.msg.Data[20:40])
+		// 	log.Info("investorAddress", "address", investorAddress.Hex())
+		// 	// 读取db中的质押信息！！！！拿不到。。
+		// 	// pledgeInfo, err :=
+		// 	// if err != nil {
+		// 	// log.Error("Failed to get pledge info", "contractAddress", investorAddress, "err", err)
+		// 	// return nil, err
+		// 	// }
+		// 	// 返回质押者的余额
+		// 	// st.state.AddBalance(investorAddress, pledgeInfo.StakedAmount)
+		// }
 
 		if isCGIToPUNKTx(st.msg) {
 			log.Info("CGI to PUNK transaction", "from", st.msg.From.Hex())
@@ -862,6 +869,33 @@ func isCGIToPUNKTx(msg *Message) bool {
 		return false
 	}
 	if msg.Data[0] == 0x0D && msg.Data[1] == 0x07 {
+		return true
+	}
+	return false
+}
+
+func isContractStakeTx(msg *Message) bool {
+	if msg.StakedAmount != nil && msg.StakedTime != 0 {
+		return true
+	}
+	return false
+}
+
+func isContractDepositTx(msg *Message) bool {
+	if msg.Data == nil || len(msg.Data) < 3 {
+		return false
+	}
+	if msg.Data[0] == 0x0D && msg.Data[1] == 0x09 {
+		return true
+	}
+	return false
+}
+
+func isMinerGetAnnualFeeTx(msg *Message) bool {
+	if msg.Data == nil || len(msg.Data) < 3 {
+		return false
+	}
+	if msg.Data[0] == 0x0D && msg.Data[1] == 0x0A {
 		return true
 	}
 	return false
