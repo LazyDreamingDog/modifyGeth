@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"fmt"
 	"math/big"
 	"teddycode/pqcgo"
 	"testing"
@@ -10,11 +11,22 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
-func newPostQuanTx(bc *core.BlockChain, signer types.Signer, Nonce int, to *common.Address, value *big.Int, data []byte) (*types.Transaction, error) {
+func newPostQuanTx(bc *core.BlockChain, lastPub *[]byte, signer types.Signer, Nonce int, to *common.Address, value *big.Int, data []byte) (*types.Transaction, error) {
 	// Prepare
 	cryptoType := "aigis_sig"
 	scheme := pqcgo.PQCSignType[cryptoType]
-	pk, sk, err := pqcgo.KeyGen(scheme)
+
+	var pk, sk []byte
+	var err error
+	if *lastPub == nil || len(*lastPub) == 0 {
+		pk, sk, err = pqcgo.KeyGen(scheme)
+	} else {
+		fmt.Println(*lastPub)
+		pk, sk, err = pqcgo.KeyGenWithSeed(scheme, *lastPub)
+	}
+
+	// LastPub update
+
 	if err != nil {
 		return nil, err
 	}
@@ -59,11 +71,18 @@ func TestPostQuan(t *testing.T) {
 	miner.Start()
 	defer miner.Stop()
 
-	
+	lastPub := make([]byte, 0)
 	testDes := common.BytesToAddress([]byte{67})
-	tx1, err := newPostQuanTx(backend.bc, backend.newSigner(), 0, &testDes, big.NewInt(0), nil)
+
+	tx1, err := newPostQuanTx(backend.bc, &lastPub, backend.newSigner(), 0, &testDes, big.NewInt(0), nil)
 	if err != nil {
 		t.Fatalf("Create tx error:%v", err)
 	}
 	backend.AddTx(tx1)
+
+	tx2, err := newPostQuanTx(backend.bc, &lastPub, backend.newSigner(), 1, &testDes, big.NewInt(0), nil)
+	if err != nil {
+		t.Fatalf("Create tx error:%v", err)
+	}
+	backend.AddTx(tx2)
 }

@@ -195,7 +195,6 @@ type executorClient struct {
 // need add a loop routine to sendTx to consensus layer, when execCh has new txs
 func (ec *executorClient) sendTx(tx *types.Transaction, nid uint64) (*pb.Empty, error) {
 	log.Info("begin send tx to consensus")
-	fmt.Println("Begin send tx to consensus")
 	data, err := tx.MarshalBinary()
 	if err != nil {
 		return nil, err
@@ -903,13 +902,11 @@ func (e *executor) executeNewTxBatch(timestamp int64, txs types.Transactions, le
 			State:         work.state,
 		})
 	}
-	fmt.Println("Post txs to gethassist")
 
 	// When transactions are validated, a goroutine starts to execute tx concurrently
 	go func() {
 		for txs := range verifiedTxCh {
 			go func() {
-				fmt.Printf("wg: %v\n", wg)
 				fmt.Println("Execute post-quantum tx")
 				// Post-quantum txs execution
 				e.executeTransactions(work, txs, &wg)
