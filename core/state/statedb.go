@@ -667,17 +667,30 @@ func (s *StateDB) getDeletedStateObject(addr common.Address) *stateObject {
 				return nil
 			}
 			data = &types.StateAccount{
-				Nonce:           acc.Nonce,
-				Balance:         acc.Balance,
-				CodeHash:        acc.CodeHash,
-				Root:            common.BytesToHash(acc.Root),
-				SecurityLevel:   acc.SecurityLevel,
-				Interest:        acc.Interest,
-				LastBlockNumber: acc.LastBlockNumber,
-				LastPostQuanPub: acc.LastPostQuanPub,
+				Nonce:             acc.Nonce,
+				Balance:           acc.Balance,
+				CodeHash:          acc.CodeHash,
+				Root:              common.BytesToHash(acc.Root),
+				SecurityLevel:     acc.SecurityLevel,
+				Interest:          acc.Interest,
+				LastBlockNumber:   acc.LastBlockNumber,
+				LastPostQuanPub:   acc.LastPostQuanPub,
 				TotalNumberOfGas:  acc.TotalNumberOfGas,
 				ContractCallCount: acc.ContractCallCount,
 				TotalValueTx:      acc.TotalValueTx,
+
+				PledgeAmount:       acc.PledgeAmount,
+				PledgeYear:         acc.PledgeYear,
+				StartTime:          acc.StartTime,
+				InterestRate:       acc.InterestRate,
+				CurrentInterest:    acc.CurrentInterest,
+				EarnInterest:       acc.EarnInterest,
+				AnnualFee:          acc.AnnualFee,
+				ContractAddress:    acc.ContractAddress,
+				DeployedAddress:    acc.DeployedAddress,
+				InvestorAddress:    acc.InvestorAddress,
+				BeneficiaryAddress: acc.BeneficiaryAddress,
+				StakeFlag:          acc.StakeFlag,
 			}
 			if len(data.CodeHash) == 0 {
 				data.CodeHash = types.EmptyCodeHash.Bytes()
@@ -1598,4 +1611,208 @@ func (s *StateDB) SetLastPostQuanPub(addr common.Address, pubKey []byte) {
 	if stateObject != nil {
 		stateObject.SetLastPostQuanPub(pubKey)
 	}
+}
+
+// 质押信息类
+func (s *StateDB) GetPledgeAmount(addr common.Address) uint64 {
+	stateObject := s.getStateObject(addr)
+	if stateObject != nil {
+		return stateObject.PledgeAmount()
+	}
+	return 0
+}
+
+func (s *StateDB) GetPledgeYear(addr common.Address) int {
+	stateObject := s.getStateObject(addr)
+	if stateObject != nil {
+		return stateObject.PledgeYear()
+	}
+	return 0
+}
+
+func (s *StateDB) GetStartTime(addr common.Address) uint64 {
+	stateObject := s.getStateObject(addr)
+	if stateObject != nil {
+		return stateObject.StartTime()
+	}
+	return 0
+}
+
+func (s *StateDB) GetInterestRate(addr common.Address) int {
+	stateObject := s.getStateObject(addr)
+	if stateObject != nil {
+		return stateObject.InterestRate()
+	}
+	return 0
+}
+
+func (s *StateDB) GetCurrentInterest(addr common.Address) uint64 {
+	stateObject := s.getStateObject(addr)
+	if stateObject != nil {
+		return stateObject.CurrentInterest()
+	}
+	return 0
+}
+
+func (s *StateDB) GetEarnInterest(addr common.Address) uint64 {
+	stateObject := s.getStateObject(addr)
+	if stateObject != nil {
+		return stateObject.EarnInterest()
+	}
+	return 0
+}
+
+func (s *StateDB) GetAnnualFee(addr common.Address) uint64 {
+	stateObject := s.getStateObject(addr)
+	if stateObject != nil {
+		return stateObject.AnnualFee()
+	}
+	return 0
+}
+
+func (s *StateDB) GetLastAnnualFeeTime(addr common.Address) uint64 {
+	stateObject := s.getStateObject(addr)
+	if stateObject != nil {
+		return stateObject.LastAnnualFeeTime()
+	}
+	return 0
+}
+
+func (s *StateDB) GetContractAddress(addr common.Address) common.Address {
+	stateObject := s.getStateObject(addr)
+	if stateObject != nil {
+		return stateObject.ContractAddress()
+	}
+	return common.Address{}
+}
+
+func (s *StateDB) GetDeployedAddress(addr common.Address) common.Address {
+	stateObject := s.getStateObject(addr)
+	if stateObject != nil {
+		return stateObject.DeployedAddress()
+	}
+	return common.Address{}
+}
+
+func (s *StateDB) GetInvestorAddress(addr common.Address) common.Address {
+	stateObject := s.getStateObject(addr)
+	if stateObject != nil {
+		return stateObject.InvestorAddress()
+	}
+	return common.Address{}
+}
+
+func (s *StateDB) GetBeneficiaryAddress(addr common.Address) common.Address {
+	stateObject := s.getStateObject(addr)
+	if stateObject != nil {
+		return stateObject.BeneficiaryAddress()
+	}
+	return common.Address{}
+}
+
+func (s *StateDB) GetStakeFlag(addr common.Address) bool {
+	stateObject := s.getStateObject(addr)
+	if stateObject != nil {
+		return stateObject.StakeFlag()
+	}
+	return false
+}
+
+func (s *StateDB) SetPledgeAmount(addr common.Address, amount uint64) {
+	stateObject := s.getOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.SetPledgeAmount(amount)
+	}
+}
+
+func (s *StateDB) SetPledgeYear(addr common.Address, year int) {
+	stateObject := s.getOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.SetPledgeYear(year)
+	}
+}
+
+func (s *StateDB) SetStartTime(addr common.Address, startTime uint64) {
+	stateObject := s.getOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.SetStartTime(startTime)
+	}
+}
+
+func (s *StateDB) SetInterestRate(addr common.Address, rate int) {
+	stateObject := s.getOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.SetInterestRate(rate)
+	}
+}
+
+func (s *StateDB) SetCurrentInterest(addr common.Address, interest uint64) {
+	stateObject := s.getOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.SetCurrentInterest(interest)
+	}
+}
+
+func (s *StateDB) SetEarnInterest(addr common.Address, interest uint64) {
+	stateObject := s.getOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.SetEarnInterest(interest)
+	}
+}
+
+func (s *StateDB) SetAnnualFee(addr common.Address, fee uint64) {
+	stateObject := s.getOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.SetAnnualFee(fee)
+	}
+}
+
+func (s *StateDB) SetLastAnnualFeeTime(addr common.Address, time uint64) {
+	stateObject := s.getOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.SetLastAnnualFeeTime(time)
+	}
+}
+
+func (s *StateDB) SetContractAddress(addr common.Address, contractAddress common.Address) {
+	stateObject := s.getOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.SetContractAddress(contractAddress)
+	}
+}
+
+func (s *StateDB) SetDeployedAddress(addr common.Address, deployedAddress common.Address) {
+	stateObject := s.getOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.SetDeployedAddress(deployedAddress)
+	}
+}
+
+func (s *StateDB) SetInvestorAddress(addr common.Address, investorAddress common.Address) {
+	stateObject := s.getOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.SetInvestorAddress(investorAddress)
+	}
+}
+
+func (s *StateDB) SetBeneficiaryAddress(addr common.Address, beneficiaryAddress common.Address) {
+	stateObject := s.getOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.SetBeneficiaryAddress(beneficiaryAddress)
+	}
+}
+
+func (s *StateDB) SetStakeFlag(addr common.Address, flag bool) {
+	stateObject := s.getOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.SetStakeFlag(flag)
+	}
+}
+
+func (s *StateDB) GetPledgeInfo(addr common.Address) (uint64, int, uint64, int, uint64, uint64, uint64, uint64, common.Address, common.Address, common.Address, common.Address, bool) {
+	stateObject := s.getStateObject(addr)
+	if stateObject != nil {
+		return stateObject.PledgeAmount(), stateObject.PledgeYear(), stateObject.StartTime(), stateObject.InterestRate(), stateObject.CurrentInterest(), stateObject.EarnInterest(), stateObject.AnnualFee(), stateObject.LastAnnualFeeTime(), stateObject.ContractAddress(), stateObject.DeployedAddress(), stateObject.InvestorAddress(), stateObject.BeneficiaryAddress(), stateObject.StakeFlag()
+	}
+	return 0, 0, 0, 0, 0, 0, 0, 0, common.Address{}, common.Address{}, common.Address{}, common.Address{}, false
 }

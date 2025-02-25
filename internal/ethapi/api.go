@@ -676,6 +676,11 @@ func (s *BlockChainAPI) GetSecurityLevel(ctx context.Context, address common.Add
 	return hexutil.Uint64(b), state.Error()
 }
 
+func (s *BlockChainAPI) GetPledgeInfoByContractAddress(ctx context.Context, address common.Address) (hexutil.Uint64, error) {
+	// s.b.
+	return 0, nil
+}
+
 // Result structs for GetProof
 type AccountResult struct {
 	Address      common.Address  `json:"address"`

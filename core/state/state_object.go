@@ -745,3 +745,160 @@ func (s *stateObject) GetTotalValueTx() *uint256.Int {
 	}
 	return uint256.NewInt(0)
 }
+
+// 质押类信息
+func (s *stateObject) PledgeAmount() uint64 {
+	return s.data.PledgeAmount
+}
+
+func (s *stateObject) PledgeYear() int {
+	return s.data.PledgeYear
+}
+
+func (s *stateObject) StartTime() uint64 {
+	return s.data.StartTime
+}
+
+func (s *stateObject) InterestRate() int {
+	return s.data.InterestRate
+}
+
+func (s *stateObject) CurrentInterest() uint64 {
+	return s.data.CurrentInterest
+}
+
+func (s *stateObject) EarnInterest() uint64 {
+	return s.data.EarnInterest
+}
+
+func (s *stateObject) AnnualFee() uint64 {
+	return s.data.AnnualFee
+}
+
+func (s *stateObject) LastAnnualFeeTime() uint64 {
+	return s.data.LastAnnualFeeTime
+}
+
+func (s *stateObject) ContractAddress() common.Address {
+	return s.data.ContractAddress
+}
+
+func (s *stateObject) DeployedAddress() common.Address {
+	return s.data.DeployedAddress
+}
+
+func (s *stateObject) InvestorAddress() common.Address {
+	return s.data.InvestorAddress
+}
+
+func (s *stateObject) BeneficiaryAddress() common.Address {
+	return s.data.BeneficiaryAddress
+}
+
+func (s *stateObject) StakeFlag() bool {
+	return s.data.StakeFlag
+}
+
+func (s *stateObject) SetPledgeAmount(amount uint64) {
+	s.db.journal.append(pledgeAmountChange{
+		account: &s.address,
+		prev:    s.data.PledgeAmount,
+	})
+	s.data.PledgeAmount = amount
+}
+
+func (s *stateObject) SetPledgeYear(year int) {
+	s.db.journal.append(pledgeYearChange{
+		account: &s.address,
+		prev:    s.data.PledgeYear,
+	})
+	s.data.PledgeYear = year
+}
+
+func (s *stateObject) SetStartTime(startTime uint64) {
+	s.db.journal.append(startTimeChange{
+		account: &s.address,
+		prev:    s.data.StartTime,
+	})
+	s.data.StartTime = startTime
+}
+
+func (s *stateObject) SetInterestRate(rate int) {
+	s.db.journal.append(interestRateChange{
+		account: &s.address,
+		prev:    s.data.InterestRate,
+	})
+	s.data.InterestRate = rate
+}
+
+func (s *stateObject) SetCurrentInterest(interest uint64) {
+	s.db.journal.append(currentInterestChange{
+		account: &s.address,
+		prev:    s.data.CurrentInterest,
+	})
+	s.data.CurrentInterest = interest
+}
+
+func (s *stateObject) SetEarnInterest(interest uint64) {
+	s.db.journal.append(earnInterestChange{
+		account: &s.address,
+		prev:    s.data.EarnInterest,
+	})
+	s.data.EarnInterest = interest
+}
+
+func (s *stateObject) SetAnnualFee(fee uint64) {
+	s.db.journal.append(annualFeeChange{
+		account: &s.address,
+		prev:    s.data.AnnualFee,
+	})
+	s.data.AnnualFee = fee
+}
+
+func (s *stateObject) SetLastAnnualFeeTime(time uint64) {
+	s.db.journal.append(lastAnnualFeeTimeChange{
+		account: &s.address,
+		prev:    s.data.LastAnnualFeeTime,
+	})
+	s.data.LastAnnualFeeTime = time
+}
+
+func (s *stateObject) SetContractAddress(address common.Address) {
+	s.db.journal.append(contractAddressChange{
+		account: &s.address,
+		prev:    s.data.ContractAddress,
+	})
+	s.data.ContractAddress = address
+}
+
+func (s *stateObject) SetDeployedAddress(address common.Address) {
+	s.db.journal.append(deployedAddressChange{
+		account: &s.address,
+		prev:    s.data.DeployedAddress,
+	})
+	s.data.DeployedAddress = address
+}
+
+func (s *stateObject) SetInvestorAddress(address common.Address) {
+	s.db.journal.append(investorAddressChange{
+		account: &s.address,
+		prev:    s.data.InvestorAddress,
+	})
+	s.data.InvestorAddress = address
+}
+
+func (s *stateObject) SetBeneficiaryAddress(address common.Address) {
+	s.db.journal.append(beneficiaryAddressChange{
+		account: &s.address,
+		prev:    s.data.BeneficiaryAddress,
+	})
+	s.data.BeneficiaryAddress = address
+}
+
+func (s *stateObject) SetStakeFlag(flag bool) {
+	s.db.journal.append(stakeFlagChange{
+		account: &s.address,
+		prev:    s.data.StakeFlag,
+	})
+	s.data.StakeFlag = flag
+}
