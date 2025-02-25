@@ -751,7 +751,7 @@ func (s *stateObject) PledgeAmount() uint64 {
 	return s.data.PledgeAmount
 }
 
-func (s *stateObject) PledgeYear() int {
+func (s *stateObject) PledgeYear() uint64 {
 	return s.data.PledgeYear
 }
 
@@ -759,7 +759,7 @@ func (s *stateObject) StartTime() uint64 {
 	return s.data.StartTime
 }
 
-func (s *stateObject) InterestRate() int {
+func (s *stateObject) InterestRate() uint64 {
 	return s.data.InterestRate
 }
 
@@ -807,7 +807,7 @@ func (s *stateObject) SetPledgeAmount(amount uint64) {
 	s.data.PledgeAmount = amount
 }
 
-func (s *stateObject) SetPledgeYear(year int) {
+func (s *stateObject) SetPledgeYear(year uint64) {
 	s.db.journal.append(pledgeYearChange{
 		account: &s.address,
 		prev:    s.data.PledgeYear,
@@ -823,7 +823,7 @@ func (s *stateObject) SetStartTime(startTime uint64) {
 	s.data.StartTime = startTime
 }
 
-func (s *stateObject) SetInterestRate(rate int) {
+func (s *stateObject) SetInterestRate(rate uint64) {
 	s.db.journal.append(interestRateChange{
 		account: &s.address,
 		prev:    s.data.InterestRate,

@@ -192,7 +192,7 @@ type (
 	}
 	pledgeYearChange struct {
 		account *common.Address
-		prev    int
+		prev    uint64
 	}
 	startTimeChange struct {
 		account *common.Address
@@ -200,7 +200,7 @@ type (
 	}
 	interestRateChange struct {
 		account *common.Address
-		prev    int
+		prev    uint64
 	}
 	currentInterestChange struct {
 		account *common.Address

@@ -1622,7 +1622,7 @@ func (s *StateDB) GetPledgeAmount(addr common.Address) uint64 {
 	return 0
 }
 
-func (s *StateDB) GetPledgeYear(addr common.Address) int {
+func (s *StateDB) GetPledgeYear(addr common.Address) uint64 {
 	stateObject := s.getStateObject(addr)
 	if stateObject != nil {
 		return stateObject.PledgeYear()
@@ -1638,7 +1638,7 @@ func (s *StateDB) GetStartTime(addr common.Address) uint64 {
 	return 0
 }
 
-func (s *StateDB) GetInterestRate(addr common.Address) int {
+func (s *StateDB) GetInterestRate(addr common.Address) uint64 {
 	stateObject := s.getStateObject(addr)
 	if stateObject != nil {
 		return stateObject.InterestRate()
@@ -1725,7 +1725,7 @@ func (s *StateDB) SetPledgeAmount(addr common.Address, amount uint64) {
 	}
 }
 
-func (s *StateDB) SetPledgeYear(addr common.Address, year int) {
+func (s *StateDB) SetPledgeYear(addr common.Address, year uint64) {
 	stateObject := s.getOrNewStateObject(addr)
 	if stateObject != nil {
 		stateObject.SetPledgeYear(year)
@@ -1739,7 +1739,7 @@ func (s *StateDB) SetStartTime(addr common.Address, startTime uint64) {
 	}
 }
 
-func (s *StateDB) SetInterestRate(addr common.Address, rate int) {
+func (s *StateDB) SetInterestRate(addr common.Address, rate uint64) {
 	stateObject := s.getOrNewStateObject(addr)
 	if stateObject != nil {
 		stateObject.SetInterestRate(rate)
@@ -1809,7 +1809,7 @@ func (s *StateDB) SetStakeFlag(addr common.Address, flag bool) {
 	}
 }
 
-func (s *StateDB) GetPledgeInfo(addr common.Address) (uint64, int, uint64, int, uint64, uint64, uint64, uint64, common.Address, common.Address, common.Address, common.Address, bool) {
+func (s *StateDB) GetPledgeInfo(addr common.Address) (uint64, uint64, uint64, uint64, uint64, uint64, uint64, uint64, common.Address, common.Address, common.Address, common.Address, bool) {
 	stateObject := s.getStateObject(addr)
 	if stateObject != nil {
 		return stateObject.PledgeAmount(), stateObject.PledgeYear(), stateObject.StartTime(), stateObject.InterestRate(), stateObject.CurrentInterest(), stateObject.EarnInterest(), stateObject.AnnualFee(), stateObject.LastAnnualFeeTime(), stateObject.ContractAddress(), stateObject.DeployedAddress(), stateObject.InvestorAddress(), stateObject.BeneficiaryAddress(), stateObject.StakeFlag()

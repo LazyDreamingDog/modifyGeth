@@ -587,7 +587,7 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 			// 设置质押时间
 			st.state.SetStartTime(contractAddr, st.evm.Context.BlockNumber.Uint64())
 			// 设置质押年份
-			st.state.SetPledgeYear(contractAddr, int(msg.StakedTime))
+			st.state.SetPledgeYear(contractAddr, msg.StakedTime)
 			// 设置质押金额
 			st.state.SetPledgeAmount(contractAddr, msg.StakedAmount.Uint64())
 			// 设置当前利息
@@ -658,7 +658,7 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 			// 设置质押时间
 			st.state.SetStartTime(*st.msg.To, st.evm.Context.BlockNumber.Uint64())
 			// 设置质押年份
-			st.state.SetPledgeYear(*st.msg.To, int(msg.StakedTime))
+			st.state.SetPledgeYear(*st.msg.To, msg.StakedTime)
 			// 设置质押金额
 			st.state.SetPledgeAmount(*st.msg.To, msg.StakedAmount.Uint64())
 			// 设置当前利息
@@ -696,9 +696,9 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 			}
 			// 计算利息
 			// 利息 = 质押金额 * 利率 * 质押年限 / 利率除数
-			i := st.state.GetPledgeAmount(contractAddress) * uint64(st.state.GetInterestRate(contractAddress)) * uint64(pledgeYear) / interest.InterestRateDivisor
+			i := st.state.GetPledgeAmount(contractAddress) * uint64(st.state.GetInterestRate(contractAddress)) * pledgeYear / interest.InterestRateDivisor
 			// 利息差 = 质押金额 * 利息差 * 质押年限 / 利率除数
-			iD := st.state.GetPledgeAmount(contractAddress) * uint64(interest.InterestRateDiff) * uint64(pledgeYear) / interest.InterestRateDivisor
+			iD := st.state.GetPledgeAmount(contractAddress) * uint64(interest.InterestRateDiff) * pledgeYear / interest.InterestRateDivisor
 			af := st.state.GetAnnualFee(contractAddress) * uint64(pledgeYear) / 2
 			// 判断是否大于年费
 			bInterest := i + iD

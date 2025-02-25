@@ -31,15 +31,15 @@ type StateDB interface {
 	CreateAccount(common.Address)
 
 	// PledgeInfo
-	GetPledgeInfo(common.Address) (uint64, int, uint64, int, uint64, uint64, uint64, uint64, common.Address, common.Address, common.Address, common.Address, bool)
+	GetPledgeInfo(common.Address) (uint64, uint64, uint64, uint64, uint64, uint64, uint64, uint64, common.Address, common.Address, common.Address, common.Address, bool)
 	GetPledgeAmount(common.Address) uint64
 	SetPledgeAmount(common.Address, uint64)
-	GetPledgeYear(common.Address) int
-	SetPledgeYear(common.Address, int)
+	GetPledgeYear(common.Address) uint64
+	SetPledgeYear(common.Address, uint64)
 	GetStartTime(common.Address) uint64
 	SetStartTime(common.Address, uint64)
-	GetInterestRate(common.Address) int
-	SetInterestRate(common.Address, int)
+	GetInterestRate(common.Address) uint64
+	SetInterestRate(common.Address, uint64)
 	GetCurrentInterest(common.Address) uint64
 	SetCurrentInterest(common.Address, uint64)
 	GetEarnInterest(common.Address) uint64

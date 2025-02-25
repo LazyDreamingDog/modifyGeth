@@ -44,9 +44,9 @@ type StateAccount struct {
 
 	// 质押信息
 	PledgeAmount uint64 //质押金额
-	PledgeYear   int    //质押年限
+	PledgeYear   uint64 //质押年限
 	StartTime    uint64 //开始时间(区块高度)
-	InterestRate int    //利率
+	InterestRate uint64 //利率
 
 	CurrentInterest uint64 //当前利息
 	EarnInterest    uint64 //收益利息（利息差）
@@ -145,9 +145,9 @@ type SlimAccount struct {
 
 	// 质押信息
 	PledgeAmount uint64 //质押金额
-	PledgeYear   int    //质押年限
+	PledgeYear   uint64 //质押年限
 	StartTime    uint64 //开始时间(区块高度)
-	InterestRate int    //利率
+	InterestRate uint64 //利率
 
 	CurrentInterest uint64 //当前利息
 	EarnInterest    uint64 //收益利息（利息差）
