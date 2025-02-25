@@ -46,7 +46,7 @@ type executor_env struct {
 
 	// 判断是否有bci转换
 	hasBci     bool
-	dciRewards []*pb.DciReward
+	dciRewards []*pb.BciReward
 
 	// 最后执行的结束后的结果，有多少tx被包括，他们的收据是什么
 	// 打包区块使用
@@ -196,7 +196,7 @@ type executorClient struct {
 
 	transferClient pb.TransferGRPCClient
 
-	dciClient pb.DciExectorClient
+	dciClient pb.BciExectorClient
 }
 
 // need add a loop routine to sendTx to consensus layer, when execCh has new txs
@@ -260,23 +260,23 @@ func (ec *executorClient) verifyTokenTransitionTx(tx *types.Transaction) (bool, 
 }
 
 func (ec *executorClient) sendInterestTx(ia common.Address, interest *big.Int, nid uint64, height uint64, bHash []byte, txHash []byte) (bool, error) {
-	dciProof := &pb.DciProof{
+	dciProof := &pb.BciProof{
 		Height:    height,
 		BlockHash: bHash,
 		TxHash:    txHash,
 		BciType:   10,
 	}
 
-	dciR := &pb.DciReward{
+	dciR := &pb.BciReward{
 		Address:  ia.Bytes(),
 		Amount:   interest.Int64(),
 		ChainID:  int32(nid),
-		DciProof: dciProof,
+		BciProof: dciProof,
 	}
-	request := &pb.SendDciRequest{
-		DciReward: []*pb.DciReward{dciR},
+	request := &pb.SendBciRequest{
+		BciReward: []*pb.BciReward{dciR},
 	}
-	res, err := ec.dciClient.SendDci(context.Background(), request)
+	res, err := ec.dciClient.SendBci(context.Background(), request)
 	if err != nil {
 		return false, err
 	}
@@ -339,7 +339,7 @@ type executor struct {
 }
 
 // newExecutor creates a new executor.
-func newExecutor(config *Config, chainConfig *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, isLocalBlock func(header *types.Header) bool, init bool, consensusCli pb.P2PClient, transferCli pb.TransferGRPCClient, dciClient pb.DciExectorClient) *executor {
+func newExecutor(config *Config, chainConfig *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, isLocalBlock func(header *types.Header) bool, init bool, consensusCli pb.P2PClient, transferCli pb.TransferGRPCClient, dciClient pb.BciExectorClient) *executor {
 	executor := &executor{
 		config:      config,
 		chainConfig: chainConfig,
@@ -717,7 +717,7 @@ func (e *executor) makeEnv(parent *types.Header, header *types.Header, coinbase 
 
 		// 初始化bci转换信息
 		hasBci:     false,
-		dciRewards: []*pb.DciReward{},
+		dciRewards: []*pb.BciReward{},
 	}
 
 	env.tcount = 0
@@ -1091,17 +1091,17 @@ func (e *executor) executeTransaction(env *executor_env, tx *types.Transaction) 
 
 		// 加载信息进入env
 		env.hasBci = true
-		df := &pb.DciProof{
+		df := &pb.BciProof{
 			Height:    env.header.Number.Uint64(),
 			BlockHash: nil, // 空着这个不填
 			TxHash:    tx.Hash().Bytes(),
 			BciType:   10,
 		}
-		dr := &pb.DciReward{
+		dr := &pb.BciReward{
 			Address:  pledgeInfo.BeneficiaryAddress.Bytes(),
 			Amount:   int64(interest),
 			ChainID:  int32(e.networkId),
-			DciProof: df,
+			BciProof: df,
 		}
 		env.dciRewards = append(env.dciRewards, dr)
 	}
@@ -1164,55 +1164,55 @@ func (e *executor) executeTransaction(env *executor_env, tx *types.Transaction) 
 	if err != nil {
 		return nil, err
 	}
-
-	// 在执行成功后，如果是合约质押交易，执行质押行为
-	if isContractPledgeTransaction(tx) && tx.To() == nil {
-		// 检查质押者的账户余额是否足够
-		sa := uint256.NewInt(tx.StakedAmount().Uint64())
-		if env.state.GetBalance(*tx.InvestorAddress()).Cmp(sa) < 0 {
-			log.Error("Investor balance is not enough", "investor", tx.InvestorAddress(), "balance", env.state.GetBalance(*tx.InvestorAddress()), "stakedAmount", tx.StakedAmount())
-			return nil, errors.New("investor balance is not enough")
-		}
-		// 意味着当前是部署合约时进行质押
-		pledge_info := &interest.PledgeInfo{
-			PledgeAmount:       tx.StakedAmount().Uint64(),
-			PledgeYear:         int(tx.StakedTime()),
-			StartTime:          env.header.Number.Uint64(), //质押起始区块
-			InterestRate:       interest.GetInterestRate(int(tx.StakedTime())),
-			AnnualFee:          receipt.GasUsed,
-			ContractAddress:    receipt.ContractAddress,
-			DeployedAddress:    *tx.DeployerAddress(),
-			InvestorAddress:    *tx.InvestorAddress(),
-			BeneficiaryAddress: *tx.BeneficiaryAddress(),
-			StakeFlag:          true,
-		}
-		// 存入数据
-		e.chain.PledgeDB().SavePledgeInfo(pledge_info)
-	} else {
-		// 检查质押者的账户余额是否足够
-		sa := uint256.NewInt(tx.StakedAmount().Uint64())
-		if env.state.GetBalance(*tx.InvestorAddress()).Cmp(sa) < 0 {
-			log.Error("Investor balance is not enough", "investor", tx.InvestorAddress(), "balance", env.state.GetBalance(*tx.InvestorAddress()), "stakedAmount", tx.StakedAmount())
-			return nil, errors.New("investor balance is not enough")
-		}
-		// 将data的前8个字节解析为uint64的合约年费
-		annul_fee := binary.BigEndian.Uint64(tx.Data()[:8])
-		// 意味着是对一个已存在合约进行质押
-		pledge_info := &interest.PledgeInfo{
-			PledgeAmount:       tx.StakedAmount().Uint64(),
-			PledgeYear:         int(tx.StakedTime()),
-			StartTime:          env.header.Number.Uint64(), //质押起始区块
-			InterestRate:       interest.GetInterestRate(int(tx.StakedTime())),
-			AnnualFee:          annul_fee,
-			ContractAddress:    *tx.To(),
-			DeployedAddress:    *tx.DeployerAddress(),
-			InvestorAddress:    *tx.InvestorAddress(),
-			BeneficiaryAddress: *tx.BeneficiaryAddress(),
-			StakeFlag:          true,
-		}
-		// 存入数据
-		e.chain.PledgeDB().SavePledgeInfo(pledge_info)
-	}
+	// ! big.Int nil
+	// // 在执行成功后，如果是合约质押交易，执行质押行为
+	// if isContractPledgeTransaction(tx) && tx.To() == nil {
+	// 	// 检查质押者的账户余额是否足够
+	// 	sa := uint256.NewInt(tx.StakedAmount().Uint64())
+	// 	if env.state.GetBalance(*tx.InvestorAddress()).Cmp(sa) < 0 {
+	// 		log.Error("Investor balance is not enough", "investor", tx.InvestorAddress(), "balance", env.state.GetBalance(*tx.InvestorAddress()), "stakedAmount", tx.StakedAmount())
+	// 		return nil, errors.New("investor balance is not enough")
+	// 	}
+	// 	// 意味着当前是部署合约时进行质押
+	// 	pledge_info := &interest.PledgeInfo{
+	// 		PledgeAmount:       tx.StakedAmount().Uint64(),
+	// 		PledgeYear:         int(tx.StakedTime()),
+	// 		StartTime:          env.header.Number.Uint64(), //质押起始区块
+	// 		InterestRate:       interest.GetInterestRate(int(tx.StakedTime())),
+	// 		AnnualFee:          receipt.GasUsed,
+	// 		ContractAddress:    receipt.ContractAddress,
+	// 		DeployedAddress:    *tx.DeployerAddress(),
+	// 		InvestorAddress:    *tx.InvestorAddress(),
+	// 		BeneficiaryAddress: *tx.BeneficiaryAddress(),
+	// 		StakeFlag:          true,
+	// 	}
+	// 	// 存入数据
+	// 	e.chain.PledgeDB().SavePledgeInfo(pledge_info)
+	// } else {
+	// 	// 检查质押者的账户余额是否足够
+	// 	sa := uint256.NewInt(tx.StakedAmount().Uint64())
+	// 	if env.state.GetBalance(*tx.InvestorAddress()).Cmp(sa) < 0 {
+	// 		log.Error("Investor balance is not enough", "investor", tx.InvestorAddress(), "balance", env.state.GetBalance(*tx.InvestorAddress()), "stakedAmount", tx.StakedAmount())
+	// 		return nil, errors.New("investor balance is not enough")
+	// 	}
+	// 	// 将data的前8个字节解析为uint64的合约年费
+	// 	annul_fee := binary.BigEndian.Uint64(tx.Data()[:8])
+	// 	// 意味着是对一个已存在合约进行质押
+	// 	pledge_info := &interest.PledgeInfo{
+	// 		PledgeAmount:       tx.StakedAmount().Uint64(),
+	// 		PledgeYear:         int(tx.StakedTime()),
+	// 		StartTime:          env.header.Number.Uint64(), //质押起始区块
+	// 		InterestRate:       interest.GetInterestRate(int(tx.StakedTime())),
+	// 		AnnualFee:          annul_fee,
+	// 		ContractAddress:    *tx.To(),
+	// 		DeployedAddress:    *tx.DeployerAddress(),
+	// 		InvestorAddress:    *tx.InvestorAddress(),
+	// 		BeneficiaryAddress: *tx.BeneficiaryAddress(),
+	// 		StakeFlag:          true,
+	// 	}
+	// 	// 存入数据
+	// 	e.chain.PledgeDB().SavePledgeInfo(pledge_info)
+	// }
 
 	env.txs = append(env.txs, tx)
 	env.receipts = append(env.receipts, receipt)
@@ -1286,10 +1286,10 @@ func (e *executor) writeToChain(env *executor_env) error {
 	if env.hasBci {
 		// 补充blockHash
 		for _, dciReward := range env.dciRewards {
-			dciReward.DciProof.BlockHash = hash.Bytes()
+			dciReward.BciProof.BlockHash = hash.Bytes()
 		}
-		e.execClient.dciClient.SendDci(context.Background(), &pb.SendDciRequest{
-			DciReward: env.dciRewards,
+		e.execClient.dciClient.SendBci(context.Background(), &pb.SendBciRequest{
+			BciReward: env.dciRewards,
 		})
 	}
 

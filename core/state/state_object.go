@@ -632,7 +632,7 @@ func (s *stateObject) SetLastPostQuanPub(pubKey []byte) {
 
 func (s *stateObject) setPostQuanPub(pubKey []byte) {
 	s.data.LastPostQuanPub = pubKey
-
+}
 
 func (s *stateObject) SetContractCallCount(amout *big.Int) {
 	s.db.journal.append(contractCallCountChange{

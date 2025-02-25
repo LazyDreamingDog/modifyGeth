@@ -182,7 +182,7 @@ func (m *Message) ParseVoucher() {
 	if len(m.Data) >= 23 && m.Data[0] == 0x0A && m.Data[1] == 0x0D && m.Data[2] == 0x03 {
 		// Initial and assign pointer
 		m.FeeCurrency = new(common.Address)
-		*m.FeeCurrency = voucher.VoucherAddress
+		*m.FeeCurrency = common.MutiVoucherAddress
 
 		// Parse token name
 		i := 3

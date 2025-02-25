@@ -190,7 +190,7 @@ func newTestExecutor(chainConfig *params.ChainConfig, engine consensus.Engine, d
 		fmt.Println(err)
 	}
 
-	dciClient := pb.NewDciExectorClient(conn2)
+	dciClient := pb.NewBciExectorClient(conn2)
 	transferClient := pb.NewTransferGRPCClient(conn1)
 	e := newExecutor(testConfig, chainConfig, engine, backend, new(event.TypeMux), nil, false, p2pClient, transferClient, dciClient)
 	e.coinbase = testBankAddress

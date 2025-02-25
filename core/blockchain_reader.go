@@ -18,8 +18,11 @@ package core
 
 import (
 	"errors"
+	"fmt"
 	"math/big"
+	"strings"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus"
 	"github.com/ethereum/go-ethereum/core/rawdb"
@@ -27,8 +30,11 @@ import (
 	"github.com/ethereum/go-ethereum/core/state/snapshot"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/event"
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
+	"github.com/ethereum/go-ethereum/proto/pb"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/trie"
 )
@@ -439,4 +445,83 @@ func (bc *BlockChain) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscript
 // block processing has started while false means it has stopped.
 func (bc *BlockChain) SubscribeBlockProcessingEvent(ch chan<- bool) event.Subscription {
 	return bc.scope.Track(bc.blockProcFeed.Subscribe(ch))
+}
+
+// Query incentives for coinBase contracts in given blocks
+func (bc *BlockChain) GetCoinBaseIncentive(startBlock uint64, endBlock uint64) ([]*pb.BciReward, uint64, error) {
+	// Legital check
+	if endBlock < startBlock {
+		return nil, 0, fmt.Errorf("block number is ilegal, endBlock is bigger than startBlock")
+	}
+
+	UpdatedEnd := endBlock
+	header := bc.CurrentHeader()
+	currentBlock := header.Number.Uint64()
+	if currentBlock < endBlock {
+		UpdatedEnd = currentBlock
+	}
+	// Load contract abi
+	CoinBaseABI, err := abi.JSON(strings.NewReader(common.CoinbaseABI_json))
+	if err != nil {
+		log.Error("Load codestorage ABI err")
+		return nil, 0, err
+	}
+
+	coinbaseAddEventHash := crypto.Keccak256Hash([]byte("CoinbaseAdded(string,string,uint256,address[],uint256[])"))
+	result := make([]*pb.BciReward, 0)
+	// Traverse blocks
+	for blockNumber := startBlock; blockNumber <= endBlock; blockNumber++ {
+		// Get receipts from block
+		block := bc.GetBlockByNumber(blockNumber)
+		receipts := bc.GetReceiptsByHash(block.Hash())
+
+		chainID := int32(bc.Config().ChainID.Int64())
+		// Traverse receipt
+		for _, receipt := range receipts {
+			// Get logs
+			for _, eventLog := range receipt.Logs {
+				// Check event hash
+				if len(eventLog.Topics) > 0 && eventLog.Topics[0] == coinbaseAddEventHash {
+					// ABI decode
+					vmap := make(map[string]interface{})
+					err := CoinBaseABI.UnpackIntoMap(vmap, "CoinbaseAdded", eventLog.Data)
+					if err != nil {
+						return nil, 0, err
+					}
+					addrs := vmap["selectedAddresses"].([]common.Address)
+					rewards := vmap["rewards"].([]*big.Int)
+					// TODO string convert to int32
+					// rewardType := vmap["rewardType"].(string)
+
+					// Legital check
+					if len(addrs) != len(rewards) {
+						return nil, 0, fmt.Errorf("len of addrs and rewards is unequal")
+					}
+
+					proof := &pb.BciProof{
+						Height:    receipt.BlockNumber.Uint64(),
+						BlockHash: receipt.BlockHash[:],
+						TxHash:    receipt.TxHash[:],
+					}
+
+					// Update
+					for i := range addrs {
+						addr := addrs[i]
+						reward := rewards[i]
+						// Initial
+						bciReward := &pb.BciReward{
+							Address:  addr.Bytes(),
+							Amount:   reward.Int64(),
+							ChainID:  chainID,
+							BciProof: proof,
+							// BciType:  rewardType,
+						}
+						result = append(result, bciReward)
+						log.Info(fmt.Sprintf("Add coinbase %v to %s", rewards[i], addrs[i]))
+					}
+				}
+			}
+		}
+	}
+	return result, UpdatedEnd, nil
 }

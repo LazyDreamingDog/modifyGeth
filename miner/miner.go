@@ -118,7 +118,7 @@ func New(eth Backend, config *Config, chainConfig *params.ChainConfig, mux *even
 	if err != nil {
 		fmt.Println(err)
 	}
-	dciClient := pb.NewDciExectorClient(conn3)
+	dciClient := pb.NewBciExectorClient(conn3)
 
 	miner := &Miner{
 		mux:     mux,

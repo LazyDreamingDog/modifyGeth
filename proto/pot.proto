@@ -10,8 +10,8 @@ enum MessageType{
   PoT_Request = 3;
   PoT_Response = 4;
   PoT_Proof = 5;
-  SendDci_Request = 6;
-  DevastateDci_Request = 7;
+  SendBci_Request = 6;
+  DevastateBci_Request = 7;
   Client_Transaction = 8;
 }
 message Block {
@@ -108,7 +108,7 @@ enum TxType{
     LockTransferTranscation = 1;
     NonLockTransferTranscation = 2;
     DevasteTransaction = 3;
-
+    CreateBciToVsiTransaction = 4;
 }
 
 message ClientTransaction{
@@ -173,11 +173,23 @@ message ExecutedTx{
   bytes   Data = 3;
 }
 
+message GetIncentiveRequest{
+  uint64 Begin = 1;
+  uint64 End = 2;
+}
+
+message GetIncentiveResponse{
+  repeated BciReward BciReward = 1;
+  uint64 End=2;
+}
+
+
 service PoTExecutor {
   rpc   GetTxs(GetTxRequest) returns (GetTxResponse){}
   rpc   VerifyTxs(VerifyTxRequest) returns (VerifyTxResponse){}
   rpc   ExecuteTxs(ExecuteTxRequest) returns (ExecuteTxResponse){}
   rpc   VerifyIncensentive(IncensentiveVerifyRequest) returns (IncensentiveVerifyResponse){}
+  rpc   GetIncentive(GetIncentiveRequest) returns (GetIncentiveResponse){}
 }
 
 message GetTxRequest{
@@ -220,36 +232,39 @@ message IncensentiveVerifyRequest{
 }
 
 
-service DciExector{
-  rpc   SendDci(SendDciRequest)           returns (SendDciResponse)       {}
+service BciExector {
+  rpc   SendBci(SendBciRequest)           returns (SendBciResponse)       {}
   rpc   GetBalance(GetBalanceRequest)     returns (GetBalanceResponse)    {}
-  rpc   DevastateDci(DevastateDciRequest) returns (DevastateDciResponse)  {}
   rpc   VerifyUTXO(VerifyUTXORequest)     returns (VerifyUTXOResponse)    {}
   rpc   CreateLockTransaction(CreateLockTransactionRequest) returns (CreateLockTransactionResponse) {}
   rpc   CreateLockTransferTransaction(CreateLockTransferTransactionRequest) returns (CreateLockTransferTransactionResponse) {}
   rpc   CreateDevastateTransaction(CreateDevastateTransactionRequest) returns (CreateDevastateTransactionResponse) {}
   rpc   CreateNonLockTransferTransaction(CreateNonLockTransferTransactionRequest) returns (CreateNonLockTransferTransactionResponse) {}
+  rpc   CreateBciToVsiTransaction(CreateBciToVsiRequest)returns (CreateBciToVsiResponse){}
+  rpc   GetPqcKey (GetPqcKeyRequest) returns (GetPqcKeyResponse) {}
 }
 
-message DciReward{
+message BciReward{
   bytes Address = 1;
   int64 Amount = 2;
   int32 ChainID = 3;
-  DciProof DciProof = 4;
+  BciProof BciProof = 4;
+  int32 BciType=5;
+  bool DoDraw=6;
 }
 
-message DciProof {
+message BciProof {
   uint64 Height = 1 ;
   bytes BlockHash = 2;
   bytes  TxHash = 3;
   int32 BciType = 4;
 }
 
-message SendDciRequest{
-  repeated DciReward DciReward = 1;
+message SendBciRequest{
+  repeated BciReward BciReward = 1;
 }
 
-message SendDciResponse{
+message SendBciResponse{
   bool IsSuccess = 1;
   uint64 Height = 2;
 }
@@ -279,14 +294,14 @@ message Utxo{
   TxOutput TxOutput = 3;
 }
 
-message DevastateDciRequest{
+message DevastateBciRequest{
   int64 Amount = 1;
   RawTxData Tx = 2;
   bytes To = 3;
   bytes transaction = 4;
 }
 
-message DevastateDciResponse{
+message DevastateBciResponse{
   bool flag = 1;
 }
 
@@ -312,6 +327,8 @@ message CoinbaseProof{
   bytes TxHash = 2;
   int64 Amount = 3;
   int32 BciType = 4;
+  bool DoDraw = 5;
+  uint64 Height = 6;
 }
 
 message CreateLockTransactionRequest{
@@ -354,4 +371,23 @@ message CreateNonLockTransferTransactionRequest{
 message CreateNonLockTransferTransactionResponse{
   RawTxData Tx = 1;
   bool IsSuccess = 2;
+}
+
+message CreateBciToVsiRequest{
+  RawTxData Tx = 1;
+}
+message CreateBciToVsiResponse{
+  RawTxData Tx = 1;
+  bool IsSuccess = 2;
+}
+message GetPqcKeyRequest{
+    
+    bytes BlockHash = 1;
+    uint64 Height = 2;
+}
+
+message GetPqcKeyResponse{
+    bool Flag = 1;
+    bytes SecretKey =2;
+    bytes PublicKey =3;
 }
