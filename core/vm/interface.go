@@ -30,6 +30,35 @@ import (
 type StateDB interface {
 	CreateAccount(common.Address)
 
+	// PledgeInfo
+	GetPledgeInfo(common.Address) (uint64, uint64, uint64, uint64, uint64, uint64, uint64, uint64, common.Address, common.Address, common.Address, common.Address, bool)
+	GetPledgeAmount(common.Address) uint64
+	SetPledgeAmount(common.Address, uint64)
+	GetPledgeYear(common.Address) uint64
+	SetPledgeYear(common.Address, uint64)
+	GetStartTime(common.Address) uint64
+	SetStartTime(common.Address, uint64)
+	GetInterestRate(common.Address) uint64
+	SetInterestRate(common.Address, uint64)
+	GetCurrentInterest(common.Address) uint64
+	SetCurrentInterest(common.Address, uint64)
+	GetEarnInterest(common.Address) uint64
+	SetEarnInterest(common.Address, uint64)
+	GetAnnualFee(common.Address) uint64
+	SetAnnualFee(common.Address, uint64)
+	GetLastAnnualFeeTime(common.Address) uint64
+	SetLastAnnualFeeTime(common.Address, uint64)
+	GetContractAddress(common.Address) common.Address
+	SetContractAddress(common.Address, common.Address)
+	GetDeployedAddress(common.Address) common.Address
+	SetDeployedAddress(common.Address, common.Address)
+	GetInvestorAddress(common.Address) common.Address
+	SetInvestorAddress(common.Address, common.Address)
+	GetBeneficiaryAddress(common.Address) common.Address
+	SetBeneficiaryAddress(common.Address, common.Address)
+	GetStakeFlag(common.Address) bool
+	SetStakeFlag(common.Address, bool)
+
 	// TODO: 增加外部调用getStateObject方法
 	// GetStateObject(common.Address)
 	AddContractCallCount(common.Address)

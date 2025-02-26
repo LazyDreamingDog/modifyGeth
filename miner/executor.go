@@ -1046,64 +1046,6 @@ func (e *executor) executeTransaction(env *executor_env, tx *types.Transaction) 
 			log.Error("Miner is not the current leader", "from", from, "leader", env.header.PoSLeader)
 			return nil, errors.New("miner is not the current leader")
 		}
-		// 读取tx.to()作为合约的地址
-		contractAddress := *tx.To()
-		// 读取db中的质押信息
-		pledgeInfo, err := e.chain.PledgeDB().GetPledgeInfo(contractAddress)
-		if err != nil {
-			log.Error("Failed to get pledge info", "contractAddress", contractAddress, "err", err)
-			return nil, err
-		}
-		// 判断质押时间是否已经到达一年，如果到达一年，则给矿工加上年费
-		if pledgeInfo.LastAnnualFeeTime+AnnualBlockHeight > env.header.Number.Uint64() {
-			env.state.AddBalance(from, uint256.NewInt(pledgeInfo.AnnualFee))
-			pledgeInfo.LastAnnualFeeTime = env.header.Number.Uint64()
-			e.chain.PledgeDB().UpdatePledgeInfo(pledgeInfo)
-		}
-
-	}
-
-	// 处理合约质押结转交易
-	if isContractSettlementTx(tx) {
-		// 读取tx.Data()[2:22]作为合约的地址
-		contractAddress := common.BytesToAddress(tx.Data()[2:22])
-		// 读取db中的质押信息
-		pledgeInfo, err := e.chain.PledgeDB().GetPledgeInfo(contractAddress)
-		if err != nil {
-			log.Error("Failed to get pledge info", "contractAddress", contractAddress, "err", err)
-			return nil, err
-		}
-		// 首先判断质押时间是否已经到期（假设一个块是一秒）（365天 * 24小时 * 1800秒（这里把质押时间的1/2乘上了））
-		if pledgeInfo.StartTime+uint64(pledgeInfo.PledgeYear*365*24*1800) > env.header.Number.Uint64() {
-			log.Error("Pledge time is not up", "contractAddress", contractAddress, "startTime", pledgeInfo.StartTime, "pledgeYear", pledgeInfo.PledgeYear, "currentBlock", env.header.Number.Uint64())
-			return nil, errors.New("pledge time is not up")
-		}
-		// 读取info中的信息计算利息
-		interest := interest.CalInterest(pledgeInfo)
-		pledgeInfo.CurrentInterest = interest
-		pledgeInfo.EarnInterest = interest
-		// 将质押状态置为false，重新写入数据库
-		pledgeInfo.StakeFlag = false
-		e.chain.PledgeDB().SavePledgeInfo(pledgeInfo)
-
-		// 将质押金额退还给质押者
-		env.state.AddBalance(pledgeInfo.InvestorAddress, uint256.NewInt(pledgeInfo.PledgeAmount))
-
-		// 加载信息进入env
-		env.hasBci = true
-		df := &pb.BciProof{
-			Height:    env.header.Number.Uint64(),
-			BlockHash: nil, // 空着这个不填
-			TxHash:    tx.Hash().Bytes(),
-			BciType:   10,
-		}
-		dr := &pb.BciReward{
-			Address:  pledgeInfo.BeneficiaryAddress.Bytes(),
-			Amount:   int64(interest),
-			ChainID:  int32(e.networkId),
-			BciProof: df,
-		}
-		env.dciRewards = append(env.dciRewards, dr)
 	}
 
 	// TODO : send to transfer
@@ -1213,6 +1155,48 @@ func (e *executor) executeTransaction(env *executor_env, tx *types.Transaction) 
 	// 	// 存入数据
 	// 	e.chain.PledgeDB().SavePledgeInfo(pledge_info)
 	// }
+
+	// 处理合约质押结转交易,在执行后处理，可获得state的数据
+	if isContractSettlementTx(tx) {
+		// 读取tx.To()作为合约的地址
+		contractAddress := *tx.To()
+		// // 读取db中的质押信息
+		// pledgeInfo, err := e.chain.PledgeDB().GetPledgeInfo(contractAddress)
+		// if err != nil {
+		// 	log.Error("Failed to get pledge info", "contractAddress", contractAddress, "err", err)
+		// 	return nil, err
+		// }
+		// // 首先判断质押时间是否已经到期（假设一个块是一秒）（365天 * 24小时 * 1800秒（这里把质押时间的1/2乘上了））
+		// if pledgeInfo.StartTime+uint64(pledgeInfo.PledgeYear*365*24*1800) > env.header.Number.Uint64() {
+		// 	log.Error("Pledge time is not up", "contractAddress", contractAddress, "startTime", pledgeInfo.StartTime, "pledgeYear", pledgeInfo.PledgeYear, "currentBlock", env.header.Number.Uint64())
+		// 	return nil, errors.New("pledge time is not up")
+		// }
+		// // 读取info中的信息计算利息
+		// interest := interest.CalInterest(pledgeInfo)
+		// pledgeInfo.CurrentInterest = interest
+		// pledgeInfo.EarnInterest = interest
+		// // 将质押状态置为false，重新写入数据库
+		// pledgeInfo.StakeFlag = false
+		// e.chain.PledgeDB().SavePledgeInfo(pledgeInfo)
+
+		// 将质押金额退还给质押者：在下一步执行中处理
+
+		// 加载信息进入env
+		env.hasBci = true
+		df := &pb.DciProof{
+			Height:    env.header.Number.Uint64(),
+			BlockHash: nil, // 空着这个不填
+			TxHash:    tx.Hash().Bytes(),
+			BciType:   10,
+		}
+		dr := &pb.DciReward{
+			Address:  env.state.GetBeneficiaryAddress(contractAddress).Bytes(),
+			Amount:   int64(env.state.GetEarnInterest(contractAddress)),
+			ChainID:  int32(e.networkId),
+			DciProof: df,
+		}
+		env.dciRewards = append(env.dciRewards, dr)
+	}
 
 	env.txs = append(env.txs, tx)
 	env.receipts = append(env.receipts, receipt)

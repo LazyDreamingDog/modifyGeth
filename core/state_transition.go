@@ -17,11 +17,14 @@
 package core
 
 import (
+	"encoding/binary"
+	"errors"
 	"fmt"
 
 	"math"
 	"math/big"
 
+	interest "github.com/ethereum/go-ethereum/Interest"
 	"github.com/ethereum/go-ethereum/common"
 
 	cmath "github.com/ethereum/go-ethereum/common/math"
@@ -558,11 +561,46 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 	)
 	if contractCreation {
 		var contractAddr common.Address
+		currentGasRemaining := st.gasRemaining
 		ret, contractAddr, st.gasRemaining, vmerr = st.evm.Create(sender, msg.Data, st.gasRemaining, value)
+		annualFee := currentGasRemaining - st.gasRemaining
 
 		// TODO:修改合约质押状态
 		if msg.DeployerAddress != nil && msg.InvestorAddress != nil && msg.BeneficiaryAddress != nil {
-			// st.state.Set
+			// 比较质押者的余额是否足够
+			if st.state.GetBalance(*st.msg.InvestorAddress).Cmp(uint256.NewInt(msg.StakedAmount.Uint64())) < 0 {
+				return nil, fmt.Errorf("%w: address %v", ErrInsufficientFundsForStake, msg.InvestorAddress.Hex())
+			}
+			// 如果够，扣除质押者的余额
+			st.state.SubBalance(*st.msg.InvestorAddress, uint256.NewInt(msg.StakedAmount.Uint64()))
+
+			// 设置合约地址
+			st.state.SetContractAddress(contractAddr, contractAddr)
+			// 设置部署者地址
+			st.state.SetDeployedAddress(contractAddr, *msg.DeployerAddress)
+			// 设置投资者地址
+			st.state.SetInvestorAddress(contractAddr, *msg.InvestorAddress)
+			// 设置受益人地址
+			st.state.SetBeneficiaryAddress(contractAddr, *msg.BeneficiaryAddress)
+			// 设置质押状态
+			st.state.SetStakeFlag(contractAddr, true)
+			// 设置质押时间
+			st.state.SetStartTime(contractAddr, st.evm.Context.BlockNumber.Uint64())
+			// 设置质押年份
+			st.state.SetPledgeYear(contractAddr, msg.StakedTime)
+			// 设置质押金额
+			st.state.SetPledgeAmount(contractAddr, msg.StakedAmount.Uint64())
+			// 设置当前利息
+			st.state.SetCurrentInterest(contractAddr, 0)
+			// 设置累计利息
+			st.state.SetEarnInterest(contractAddr, 0)
+			// 设置年费
+			st.state.SetAnnualFee(contractAddr, annualFee)
+			// 设置年费时间
+			st.state.SetLastAnnualFeeTime(contractAddr, st.evm.Context.BlockNumber.Uint64())
+
+			// 给矿工地址加上年费
+			st.state.AddBalance(st.evm.Context.Coinbase, uint256.NewInt(annualFee))
 		}
 
 		if vmerr != nil {
@@ -578,10 +616,20 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 		// Increment the nonce for the next transaction
 		st.state.SetNonce(msg.From, st.state.GetNonce(sender.Address())+1)
 
-		//
+		// 如果是矿工获取年费交易，则给矿工地址加上年费
 		if isMinerGetAnnualFeeTx(st.msg) {
 			log.Info("Miner get annual fee transaction", "from", st.msg.From.Hex(), "to", st.msg.To.Hex(), "value", st.msg.Value)
+			// 获取合约年费
+			annualFee := st.state.GetAnnualFee(*st.msg.To)
+			// 给矿工地址加上年费
+			st.state.AddBalance(st.msg.From, uint256.NewInt(annualFee))
 
+			return &ExecutionResult{
+				UsedGas:     st.gasUsed(),
+				RefundedGas: 0,
+				Err:         nil,
+				ReturnData:  nil,
+			}, nil
 		}
 
 		// TODO:如果是合约质押交易，则读取状态修改即可。
@@ -593,23 +641,87 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 			}
 			// 如果够，扣除质押者的余额
 			st.state.SubBalance(*st.msg.InvestorAddress, uint256.NewInt(msg.StakedAmount.Uint64()))
+
+			// 设置质押信息
+			// 将data的前8个字节解析为uint64的合约年费
+			annulFee := binary.BigEndian.Uint64(st.msg.Data[:8])
+			// 设置合约地址
+			st.state.SetContractAddress(*st.msg.To, *st.msg.To)
+			// 设置部署者地址
+			st.state.SetDeployedAddress(*st.msg.To, *msg.DeployerAddress)
+			// 设置投资者地址
+			st.state.SetInvestorAddress(*st.msg.To, *msg.InvestorAddress)
+			// 设置受益人地址
+			st.state.SetBeneficiaryAddress(*st.msg.To, *msg.BeneficiaryAddress)
+			// 设置质押状态
+			st.state.SetStakeFlag(*st.msg.To, true)
+			// 设置质押时间
+			st.state.SetStartTime(*st.msg.To, st.evm.Context.BlockNumber.Uint64())
+			// 设置质押年份
+			st.state.SetPledgeYear(*st.msg.To, msg.StakedTime)
+			// 设置质押金额
+			st.state.SetPledgeAmount(*st.msg.To, msg.StakedAmount.Uint64())
+			// 设置当前利息
+			st.state.SetCurrentInterest(*st.msg.To, 0)
+			// 设置累计利息
+			st.state.SetEarnInterest(*st.msg.To, 0)
+			// 设置年费
+			st.state.SetAnnualFee(*st.msg.To, annulFee)
+			// 设置年费时间
+			st.state.SetLastAnnualFeeTime(*st.msg.To, st.evm.Context.BlockNumber.Uint64())
+
+			// 给矿工地址加上年费
+			st.state.AddBalance(st.evm.Context.Coinbase, uint256.NewInt(annulFee))
+
+			return &ExecutionResult{
+				UsedGas:     st.gasUsed(),
+				RefundedGas: 0,
+				Err:         nil,
+				ReturnData:  nil,
+			}, nil
 		}
 
-		// if isContractDepositTx(st.msg) {
-		// 	log.Info("Contract deposit transaction", "from", st.msg.From.Hex(), "to", st.msg.To.Hex(), "value", st.msg.Value)
-		// 	// 返回质押者的余额
-		// 	// 读取data的20-40字节作为质押者的地址
-		// 	investorAddress := common.BytesToAddress(st.msg.Data[20:40])
-		// 	log.Info("investorAddress", "address", investorAddress.Hex())
-		// 	// 读取db中的质押信息！！！！拿不到。。
-		// 	// pledgeInfo, err :=
-		// 	// if err != nil {
-		// 	// log.Error("Failed to get pledge info", "contractAddress", investorAddress, "err", err)
-		// 	// return nil, err
-		// 	// }
-		// 	// 返回质押者的余额
-		// 	// st.state.AddBalance(investorAddress, pledgeInfo.StakedAmount)
-		// }
+		if isContractDepositTx(st.msg) {
+			log.Info("Contract deposit transaction", "from", st.msg.From.Hex(), "to", st.msg.To.Hex(), "value", st.msg.Value)
+			// 读取tx.To()作为合约的地址
+			contractAddress := *st.msg.To
+			// 获取质押时间
+			startTime := st.state.GetStartTime(contractAddress)
+			// 获取质押年份
+			pledgeYear := st.state.GetPledgeYear(contractAddress)
+			// 首先判断质押时间是否已经到期（假设一个块是一秒）（365天 * 24小时 * 1800秒（这里把质押时间的1/2乘上了））
+			if startTime+uint64(pledgeYear*365*24*1800) > st.evm.Context.BlockNumber.Uint64() {
+				log.Error("Pledge time is not up", "contractAddress", contractAddress, "startTime", startTime, "pledgeYear", pledgeYear, "currentBlock", st.evm.Context.BlockNumber.Uint64())
+				return nil, errors.New("pledge time is not up")
+			}
+			// 计算利息
+			// 利息 = 质押金额 * 利率 * 质押年限 / 利率除数
+			i := st.state.GetPledgeAmount(contractAddress) * uint64(st.state.GetInterestRate(contractAddress)) * pledgeYear / interest.InterestRateDivisor
+			// 利息差 = 质押金额 * 利息差 * 质押年限 / 利率除数
+			iD := st.state.GetPledgeAmount(contractAddress) * uint64(interest.InterestRateDiff) * pledgeYear / interest.InterestRateDivisor
+			af := st.state.GetAnnualFee(contractAddress) * uint64(pledgeYear) / 2
+			// 判断是否大于年费
+			bInterest := i + iD
+			if bInterest > af {
+				bInterest -= af
+			} else {
+				bInterest = 0
+			}
+			st.state.SetCurrentInterest(contractAddress, bInterest)
+			st.state.SetEarnInterest(contractAddress, bInterest)
+			// 将质押状态置为false，重新写入数据库
+			st.state.SetStakeFlag(contractAddress, false)
+
+			// 将质押金额退还给质押者
+			st.state.AddBalance(*st.msg.InvestorAddress, uint256.NewInt(st.state.GetPledgeAmount(contractAddress)))
+
+			return &ExecutionResult{
+				UsedGas:     st.gasUsed(),
+				RefundedGas: 0,
+				Err:         nil,
+				ReturnData:  nil,
+			}, nil
+		}
 
 		if isCGIToPUNKTx(st.msg) {
 			log.Info("CGI to PUNK transaction", "from", st.msg.From.Hex())

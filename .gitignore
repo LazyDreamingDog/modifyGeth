@@ -39,7 +39,7 @@ profile.cov
 .idea
 
 # VS Code
-.vscode
+# .vscode
 
 # dashboard
 /dashboard/assets/flow-typed
@@ -53,3 +53,5 @@ profile.cov
 logs/
 
 tests/spec-tests/
+
+data

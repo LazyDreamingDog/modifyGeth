@@ -30,36 +30,65 @@ import (
 // StateAccount is the Ethereum consensus representation of accounts.
 // These objects are stored in the main account trie.
 type StateAccount struct {
-
-	Nonce           uint64
-	Balance         *uint256.Int
-	Root            common.Hash // merkle root of the storage trie
-	CodeHash        []byte
-	SecurityLevel   uint64 // security level range 1-5. 0 means the account is locked
-	Interest        *uint256.Int
-	LastBlockNumber *big.Int // The block number where the interest was last calculated
-	LastPostQuanPub []byte
+	Nonce             uint64
+	Balance           *uint256.Int
+	Root              common.Hash // merkle root of the storage trie
+	CodeHash          []byte
+	SecurityLevel     uint64 // security level range 1-5. 0 means the account is locked
+	Interest          *uint256.Int
+	LastBlockNumber   *big.Int // The block number where the interest was last calculated
+	LastPostQuanPub   []byte
 	TotalNumberOfGas  *uint256.Int
 	ContractCallCount *big.Int
 	TotalValueTx      *uint256.Int
 
+	// 质押信息
+	PledgeAmount uint64 //质押金额
+	PledgeYear   uint64 //质押年限
+	StartTime    uint64 //开始时间(区块高度)
+	InterestRate uint64 //利率
+
+	CurrentInterest uint64 //当前利息
+	EarnInterest    uint64 //收益利息（利息差）
+
+	AnnualFee         uint64 //合约部署年费
+	LastAnnualFeeTime uint64 //上一次收取年费的时间
+
+	ContractAddress    common.Address //合约地址
+	DeployedAddress    common.Address //部署人地址
+	InvestorAddress    common.Address //投资人地址
+	BeneficiaryAddress common.Address //受益人地址
+
+	StakeFlag bool //质押标志
 }
 
 // NewEmptyStateAccount constructs an empty state account.
 func NewEmptyStateAccount() *StateAccount {
 	return &StateAccount{
-
-		Balance:         new(uint256.Int),
-		Root:            EmptyRootHash,
-		CodeHash:        EmptyCodeHash.Bytes(),
-		SecurityLevel:   1,
-		Interest:        uint256.NewInt(0),
-		LastBlockNumber: big.NewInt(0),
-		LastPostQuanPub: EmptyCodeHash.Bytes(),
+		Balance:           new(uint256.Int),
+		Root:              EmptyRootHash,
+		CodeHash:          EmptyCodeHash.Bytes(),
+		SecurityLevel:     1,
+		Interest:          uint256.NewInt(0),
+		LastBlockNumber:   big.NewInt(0),
+		LastPostQuanPub:   EmptyCodeHash.Bytes(),
 		ContractCallCount: big.NewInt(0),
 		TotalNumberOfGas:  uint256.NewInt(0),
 		TotalValueTx:      uint256.NewInt(0),
 
+		PledgeAmount:       0,
+		PledgeYear:         0,
+		StartTime:          0,
+		InterestRate:       0,
+		CurrentInterest:    0,
+		EarnInterest:       0,
+		AnnualFee:          0,
+		LastAnnualFeeTime:  0,
+		ContractAddress:    common.Address{},
+		DeployedAddress:    common.Address{},
+		InvestorAddress:    common.Address{},
+		BeneficiaryAddress: common.Address{},
+		StakeFlag:          false,
 	}
 }
 
@@ -70,19 +99,31 @@ func (acct *StateAccount) Copy() *StateAccount {
 		balance = new(uint256.Int).Set(acct.Balance)
 	}
 	return &StateAccount{
-
-		Nonce:           acct.Nonce,
-		Balance:         balance,
-		Root:            acct.Root,
-		CodeHash:        common.CopyBytes(acct.CodeHash),
-		SecurityLevel:   acct.SecurityLevel,
-		Interest:        acct.Interest,
-		LastBlockNumber: acct.LastBlockNumber,
-		LastPostQuanPub: common.CopyBytes(acct.LastPostQuanPub),
+		Nonce:             acct.Nonce,
+		Balance:           balance,
+		Root:              acct.Root,
+		CodeHash:          common.CopyBytes(acct.CodeHash),
+		SecurityLevel:     acct.SecurityLevel,
+		Interest:          acct.Interest,
+		LastBlockNumber:   acct.LastBlockNumber,
+		LastPostQuanPub:   common.CopyBytes(acct.LastPostQuanPub),
 		ContractCallCount: acct.ContractCallCount,
 		TotalNumberOfGas:  acct.TotalNumberOfGas,
 		TotalValueTx:      acct.TotalValueTx,
 
+		PledgeAmount:       acct.PledgeAmount,
+		PledgeYear:         acct.PledgeYear,
+		StartTime:          acct.StartTime,
+		InterestRate:       acct.InterestRate,
+		CurrentInterest:    acct.CurrentInterest,
+		EarnInterest:       acct.EarnInterest,
+		AnnualFee:          acct.AnnualFee,
+		LastAnnualFeeTime:  acct.LastAnnualFeeTime,
+		ContractAddress:    acct.ContractAddress,
+		DeployedAddress:    acct.DeployedAddress,
+		InvestorAddress:    acct.InvestorAddress,
+		BeneficiaryAddress: acct.BeneficiaryAddress,
+		StakeFlag:          acct.StakeFlag,
 	}
 }
 
@@ -90,19 +131,36 @@ func (acct *StateAccount) Copy() *StateAccount {
 // with a byte slice. This format can be used to represent full-consensus format
 // or slim format which replaces the empty root and code hash as nil byte slice.
 type SlimAccount struct {
-
-	Nonce           uint64
-	Balance         *uint256.Int
-	Root            []byte // Nil if root equals to types.EmptyRootHash
-	CodeHash        []byte // Nil if hash equals to types.EmptyCodeHash
-	SecurityLevel   uint64
-	Interest        *uint256.Int
-	LastBlockNumber *big.Int
-	LastPostQuanPub []byte
+	Nonce             uint64
+	Balance           *uint256.Int
+	Root              []byte // Nil if root equals to types.EmptyRootHash
+	CodeHash          []byte // Nil if hash equals to types.EmptyCodeHash
+	SecurityLevel     uint64
+	Interest          *uint256.Int
+	LastBlockNumber   *big.Int
+	LastPostQuanPub   []byte
 	ContractCallCount *big.Int
 	TotalNumberOfGas  *uint256.Int
 	TotalValueTx      *uint256.Int
 
+	// 质押信息
+	PledgeAmount uint64 //质押金额
+	PledgeYear   uint64 //质押年限
+	StartTime    uint64 //开始时间(区块高度)
+	InterestRate uint64 //利率
+
+	CurrentInterest uint64 //当前利息
+	EarnInterest    uint64 //收益利息（利息差）
+
+	AnnualFee         uint64 //合约部署年费
+	LastAnnualFeeTime uint64 //上一次收取年费的时间
+
+	ContractAddress    common.Address //合约地址
+	DeployedAddress    common.Address //部署人地址
+	InvestorAddress    common.Address //投资人地址
+	BeneficiaryAddress common.Address //受益人地址
+
+	StakeFlag bool //质押标志
 }
 
 // SlimAccountRLP encodes the state account in 'slim RLP' format.
@@ -116,6 +174,20 @@ func SlimAccountRLP(account StateAccount) []byte {
 		ContractCallCount: account.ContractCallCount,
 		TotalNumberOfGas:  account.TotalNumberOfGas,
 		TotalValueTx:      account.TotalValueTx,
+
+		PledgeAmount:       account.PledgeAmount,
+		PledgeYear:         account.PledgeYear,
+		StartTime:          account.StartTime,
+		InterestRate:       account.InterestRate,
+		CurrentInterest:    account.CurrentInterest,
+		EarnInterest:       account.EarnInterest,
+		AnnualFee:          account.AnnualFee,
+		LastAnnualFeeTime:  account.LastAnnualFeeTime,
+		ContractAddress:    account.ContractAddress,
+		DeployedAddress:    account.DeployedAddress,
+		InvestorAddress:    account.InvestorAddress,
+		BeneficiaryAddress: account.BeneficiaryAddress,
+		StakeFlag:          account.StakeFlag,
 	}
 	if account.Root != EmptyRootHash {
 		slim.Root = account.Root[:]
@@ -148,6 +220,22 @@ func FullAccount(data []byte) (*StateAccount, error) {
 	account.ContractCallCount = slim.ContractCallCount
 	account.TotalNumberOfGas = slim.TotalNumberOfGas
 	account.TotalValueTx = slim.TotalValueTx
+
+	// 质押信息
+	account.PledgeAmount = slim.PledgeAmount
+	account.PledgeYear = slim.PledgeYear
+	account.StartTime = slim.StartTime
+	account.InterestRate = slim.InterestRate
+	account.CurrentInterest = slim.CurrentInterest
+	account.EarnInterest = slim.EarnInterest
+	account.AnnualFee = slim.AnnualFee
+	account.LastAnnualFeeTime = slim.LastAnnualFeeTime
+	account.ContractAddress = slim.ContractAddress
+	account.DeployedAddress = slim.DeployedAddress
+	account.InvestorAddress = slim.InvestorAddress
+	account.BeneficiaryAddress = slim.BeneficiaryAddress
+	account.StakeFlag = slim.StakeFlag
+
 	// Interpret the storage root and code hash in slim format.
 	if len(slim.Root) == 0 {
 		account.Root = EmptyRootHash

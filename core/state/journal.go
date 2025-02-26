@@ -168,6 +168,7 @@ type (
 		account *common.Address
 		prev    []byte
 	}
+  
 	// Changes to the contract storage trie.
 	contractCallCountChange struct {
 		account  *common.Address
@@ -182,6 +183,61 @@ type (
 	totalValueTxChange struct {
 		account  *common.Address
 		prevalue *uint256.Int
+	}
+
+	// changes to pledge info
+	pledgeAmountChange struct {
+		account *common.Address
+		prev    uint64
+	}
+	pledgeYearChange struct {
+		account *common.Address
+		prev    uint64
+	}
+	startTimeChange struct {
+		account *common.Address
+		prev    uint64
+	}
+	interestRateChange struct {
+		account *common.Address
+		prev    uint64
+	}
+	currentInterestChange struct {
+		account *common.Address
+		prev    uint64
+	}
+	earnInterestChange struct {
+		account *common.Address
+		prev    uint64
+	}
+	annualFeeChange struct {
+		account *common.Address
+		prev    uint64
+	}
+	lastAnnualFeeTimeChange struct {
+		account *common.Address
+		prev    uint64
+	}
+	contractAddressChange struct {
+		account *common.Address
+		prev    common.Address
+	}
+	deployedAddressChange struct {
+		account *common.Address
+		prev    common.Address
+	}
+	investorAddressChange struct {
+		account *common.Address
+		prev    common.Address
+	}
+	beneficiaryAddressChange struct {
+		account *common.Address
+		prev    common.Address
+	}
+
+	stakeFlagChange struct {
+		account *common.Address
+		prev    bool
 	}
 )
 
@@ -388,5 +444,110 @@ func (ch PostQuanPubChange) revert(s *StateDB) {
 }
 
 func (ch PostQuanPubChange) dirtied() *common.Address {
+	return ch.account
+}
+
+// 质押类
+func (ch pledgeAmountChange) revert(s *StateDB) {
+	s.getStateObject(*ch.account).SetPledgeAmount(ch.prev)
+}
+
+func (ch pledgeAmountChange) dirtied() *common.Address {
+	return ch.account
+}
+
+func (ch pledgeYearChange) revert(s *StateDB) {
+	s.getStateObject(*ch.account).SetPledgeYear(ch.prev)
+}
+
+func (ch pledgeYearChange) dirtied() *common.Address {
+	return ch.account
+}
+
+func (ch startTimeChange) revert(s *StateDB) {
+	s.getStateObject(*ch.account).SetStartTime(ch.prev)
+}
+
+func (ch startTimeChange) dirtied() *common.Address {
+	return ch.account
+}
+
+func (ch interestRateChange) revert(s *StateDB) {
+	s.getStateObject(*ch.account).SetInterestRate(ch.prev)
+}
+
+func (ch interestRateChange) dirtied() *common.Address {
+	return ch.account
+}
+
+func (ch currentInterestChange) revert(s *StateDB) {
+	s.getStateObject(*ch.account).SetCurrentInterest(ch.prev)
+}
+
+func (ch currentInterestChange) dirtied() *common.Address {
+	return ch.account
+}
+
+func (ch earnInterestChange) revert(s *StateDB) {
+	s.getStateObject(*ch.account).SetEarnInterest(ch.prev)
+}
+
+func (ch earnInterestChange) dirtied() *common.Address {
+	return ch.account
+}
+
+func (ch annualFeeChange) revert(s *StateDB) {
+	s.getStateObject(*ch.account).SetAnnualFee(ch.prev)
+}
+
+func (ch annualFeeChange) dirtied() *common.Address {
+	return ch.account
+}
+
+func (ch lastAnnualFeeTimeChange) revert(s *StateDB) {
+	s.getStateObject(*ch.account).SetLastAnnualFeeTime(ch.prev)
+}
+
+func (ch lastAnnualFeeTimeChange) dirtied() *common.Address {
+	return ch.account
+}
+
+func (ch contractAddressChange) revert(s *StateDB) {
+	s.getStateObject(*ch.account).SetContractAddress(ch.prev)
+}
+
+func (ch contractAddressChange) dirtied() *common.Address {
+	return ch.account
+}
+
+func (ch deployedAddressChange) revert(s *StateDB) {
+	s.getStateObject(*ch.account).SetDeployedAddress(ch.prev)
+}
+
+func (ch deployedAddressChange) dirtied() *common.Address {
+	return ch.account
+}
+
+func (ch investorAddressChange) revert(s *StateDB) {
+	s.getStateObject(*ch.account).SetInvestorAddress(ch.prev)
+}
+
+func (ch investorAddressChange) dirtied() *common.Address {
+	return ch.account
+}
+
+func (ch beneficiaryAddressChange) revert(s *StateDB) {
+	s.getStateObject(*ch.account).SetBeneficiaryAddress(ch.prev)
+}
+
+func (ch beneficiaryAddressChange) dirtied() *common.Address {
+	return ch.account
+}
+
+func (ch stakeFlagChange) revert(s *StateDB) {
+	s.getStateObject(*ch.account).SetStakeFlag(ch.prev)
+}
+
+func (ch stakeFlagChange) dirtied() *common.Address {
 	return ch.account
 }

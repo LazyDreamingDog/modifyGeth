@@ -49,6 +49,19 @@ func (obj *StateAccount) EncodeRLP(_w io.Writer) error {
 	} else {
 		w.WriteUint256(obj.TotalValueTx)
 	}
+	w.WriteUint64(obj.PledgeAmount)
+	w.WriteUint64(obj.PledgeYear)
+	w.WriteUint64(obj.StartTime)
+	w.WriteUint64(obj.InterestRate)
+	w.WriteUint64(obj.CurrentInterest)
+	w.WriteUint64(obj.EarnInterest)
+	w.WriteUint64(obj.AnnualFee)
+	w.WriteUint64(obj.LastAnnualFeeTime)
+	w.WriteBytes(obj.ContractAddress[:])
+	w.WriteBytes(obj.DeployedAddress[:])
+	w.WriteBytes(obj.InvestorAddress[:])
+	w.WriteBytes(obj.BeneficiaryAddress[:])
+	w.WriteBool(obj.StakeFlag)
 	w.ListEnd(_tmp0)
 	return w.Flush()
 }

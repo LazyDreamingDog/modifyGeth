@@ -655,6 +655,18 @@ func (s *BlockChainAPI) GetBalance(ctx context.Context, address common.Address, 
 	return (*hexutil.Big)(b), state.Error()
 }
 
+// GetInterest returns the amount of wei for the given address in the state of the
+// given block number. The rpc.LatestBlockNumber and rpc.PendingBlockNumber meta
+// block numbers are also allowed.
+func (s *BlockChainAPI) GetInterest(ctx context.Context, address common.Address, blockNrOrHash rpc.BlockNumberOrHash) (*hexutil.Big, error) {
+	state, _, err := s.b.StateAndHeaderByNumberOrHash(ctx, blockNrOrHash)
+	if state == nil || err != nil {
+		return nil, err
+	}
+	b := state.GetInterest(address).ToBig()
+	return (*hexutil.Big)(b), state.Error()
+}
+
 func (s *BlockChainAPI) GetSecurityLevel(ctx context.Context, address common.Address, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Uint64, error) {
 	state, _, err := s.b.StateAndHeaderByNumberOrHash(ctx, blockNrOrHash)
 	if state == nil || err != nil {
@@ -662,6 +674,68 @@ func (s *BlockChainAPI) GetSecurityLevel(ctx context.Context, address common.Add
 	}
 	b := state.GetSecurityLevel(address)
 	return hexutil.Uint64(b), state.Error()
+}
+
+type RPCPledgeInfo struct {
+	PledgeAmount uint64 `json:"pledgeAmount"`
+	PledgeYear   uint64 `json:"pledgeYear"`
+	StartTime    uint64 `json:"startTime"`
+	InterestRate uint64 `json:"interestRate"`
+
+	EarnInterest uint64 `json:"earnInterest"`
+
+	AnnualFee         uint64 `json:"annualFee"`
+	LastAnnualFeeTime uint64 `json:"lastAnnualFeeTime"`
+
+	ContractAddress    common.Address `json:"contractAddress"`
+	DeployedAddress    common.Address `json:"deployedAddress"`
+	InvestorAddress    common.Address `json:"investorAddress"`
+	BeneficiaryAddress common.Address `json:"beneficiaryAddress"`
+
+	IsStaked bool `json:"isStaked"`
+}
+
+func RPCMarshalPledgeInfo(info *RPCPledgeInfo) map[string]interface{} {
+	return map[string]interface{}{
+		"pledgeAmount":       info.PledgeAmount,
+		"pledgeYear":         info.PledgeYear,
+		"startTime":          info.StartTime,
+		"interestRate":       info.InterestRate,
+		"earnInterest":       info.EarnInterest,
+		"annualFee":          info.AnnualFee,
+		"lastAnnualFeeTime":  info.LastAnnualFeeTime,
+		"contractAddress":    info.ContractAddress,
+		"deployedAddress":    info.DeployedAddress,
+		"investorAddress":    info.InvestorAddress,
+		"beneficiaryAddress": info.BeneficiaryAddress,
+		"isStaked":           info.IsStaked,
+	}
+}
+
+func (s *BlockChainAPI) GetPledgeInfoByContractAddress(ctx context.Context, address common.Address, blockNrOrHash rpc.BlockNumberOrHash) (map[string]interface{}, error) {
+	// 获取质押信息
+	state, _, err := s.b.StateAndHeaderByNumberOrHash(ctx, blockNrOrHash)
+	if state == nil || err != nil {
+		return nil, err
+	}
+
+	pledgeAmount, pledgeYear, startTime, interestRate, _, earnInterest, annualFee, lastAnnualFeeTime, contractAddress, deployedAddress, investorAddress, beneficiaryAddress, isStaked := state.GetPledgeInfo(address)
+	pledgeInfo := &RPCPledgeInfo{
+		PledgeAmount:       pledgeAmount,
+		PledgeYear:         pledgeYear,
+		StartTime:          startTime,
+		InterestRate:       interestRate,
+		EarnInterest:       earnInterest,
+		AnnualFee:          annualFee,
+		LastAnnualFeeTime:  lastAnnualFeeTime,
+		ContractAddress:    contractAddress,
+		DeployedAddress:    deployedAddress,
+		InvestorAddress:    investorAddress,
+		BeneficiaryAddress: beneficiaryAddress,
+		IsStaked:           isStaked,
+	}
+
+	return RPCMarshalPledgeInfo(pledgeInfo), nil
 }
 
 // Result structs for GetProof
