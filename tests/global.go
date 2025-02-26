@@ -58,7 +58,7 @@ func (m *TestBackend) AddTx(tx *types.Transaction) {
 		fmt.Printf("Add tx err: %v\n", errs)
 	}
 	// Wait for consense
-	time.Sleep(1000 * time.Second)
+	time.Sleep(20 * time.Second)
 }
 
 func (m *TestBackend) parseContractAddress() *common.Address {
@@ -138,9 +138,10 @@ func genesisBlock() *core.Genesis {
 		BaseFee:    big.NewInt(params.InitialBaseFee),
 		Difficulty: big.NewInt(1),
 		Alloc: map[common.Address]core.GenesisAccount{
-			bankAddress:     {Balance: new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 256), big.NewInt(9))},
-			userAddress:     {Balance: big.NewInt(1000000)},
-			contractAddress: {Code: common.FromHex(deployedBytecode)},
+			bankAddress:            {Balance: new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 256), big.NewInt(9))},
+			userAddress:            {Balance: big.NewInt(1000000)},
+			contractAddress:        {Code: common.FromHex(deployedBytecode)},
+			common.CoinBaseAddress: {Code: common.FromHex(common.CoinBaseDeployedCode)},
 		},
 	}
 }

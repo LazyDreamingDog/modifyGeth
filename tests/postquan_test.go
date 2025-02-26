@@ -21,11 +21,11 @@ func newPostQuanTx(bc *core.BlockChain, lastPub *[]byte, signer types.Signer, No
 	if *lastPub == nil || len(*lastPub) == 0 {
 		pk, sk, err = pqcgo.KeyGen(scheme)
 	} else {
-		fmt.Println(*lastPub)
 		pk, sk, err = pqcgo.KeyGenWithSeed(scheme, *lastPub)
 	}
 
 	// LastPub update
+	*lastPub = pk
 
 	if err != nil {
 		return nil, err
@@ -55,8 +55,6 @@ func newPostQuanTx(bc *core.BlockChain, lastPub *[]byte, signer types.Signer, No
 	if err != nil {
 		fmt.Println("get message err:", err)
 	}
-	fmt.Printf("signed message: %s\n", txMessage)
-	// Post-quantum sign
 	sig, err := pqcgo.Sign(scheme, txMessage, sk)
 	if err != nil {
 		return nil, err
@@ -78,13 +76,13 @@ func TestPostQuan(t *testing.T) {
 	lastPub := make([]byte, 0)
 	testDes := common.BytesToAddress([]byte{67})
 
-	tx1, err := newPostQuanTx(backend.bc, &lastPub, backend.newSigner(), 0, &testDes, big.NewInt(0), nil)
+	tx1, err := newPostQuanTx(backend.bc, &lastPub, backend.newSigner(), 0, &testDes, big.NewInt(0), []byte{})
 	if err != nil {
 		t.Fatalf("Create tx error:%v", err)
 	}
 	backend.AddTx(tx1)
 
-	tx2, err := newPostQuanTx(backend.bc, &lastPub, backend.newSigner(), 1, &testDes, big.NewInt(0), nil)
+	tx2, err := newPostQuanTx(backend.bc, &lastPub, backend.newSigner(), 1, &testDes, big.NewInt(0), []byte{})
 	if err != nil {
 		t.Fatalf("Create tx error:%v", err)
 	}

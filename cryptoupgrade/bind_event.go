@@ -7,8 +7,10 @@ import (
 	"math/big"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -43,7 +45,7 @@ func ParseReceipt(receipt *types.Receipt) {
 
 func BindCodeUploaded(client client) {
 	query := ethereum.FilterQuery{
-		Addresses: []common.Address{CodeStorageAddress},
+		Addresses: []common.Address{common.CodeStorageAddress},
 		Topics:    [][]common.Hash{{codeUploaded}}, // Event hash
 	}
 	logCh := make(chan types.Log)
@@ -55,18 +57,18 @@ func BindCodeUploaded(client client) {
 	defer sub.Unsubscribe()
 
 	// Subsribe coinbase add event
-	coinBaseAddress := common.HexToAddress("0x63BC05BC6FCAb99AF9A4c215B2e92a9C6f45D41F")
 	eventHash := crypto.Keccak256Hash([]byte("CoinbaseAdded(string,string,uint256,address[],uint256[])"))
-	coinSub, coinLogCh, err := bindCoinBaseEvent(client, coinBaseAddress, eventHash)
+	coinSub, coinLogCh, err := bindCoinBaseEvent(client, eventHash)
 	if err != nil {
 		log.Error("Failed to subscribe to coinbase logs: %v", err)
 	}
 	defer coinSub.Unsubscribe()
+	CoinBaseABI, _ := abi.JSON(strings.NewReader(common.CoinbaseABI_json))
 
 	for {
 		select {
 		case err := <-sub.Err():
-			log.Error("Error while listening for cryptoupgrade logs: %v", err)
+			log.Error("Error while listening for cryptoupgrade log", err)
 		case Log := <-logCh:
 			// Parse name from event
 			log.Info("Catch codeUploaded event!")
@@ -110,23 +112,15 @@ func BindCodeUploaded(client client) {
 				algoInfoMap[name] = *pc
 			}
 		case err := <-coinSub.Err():
-			log.Error("Error while listening for coinbase logs: %v", err)
-		case Log := <-coinLogCh:
-			log.Info("Catch coinBase add event!")
-
-			// Parse name from event
+			log.Error("Error while listening for coinbase logs", err)
+		case eventLog := <-coinLogCh:
+			log.Info("Get Coinbase add event")
 			vmap := make(map[string]interface{})
-			err := CoinBaseABI.UnpackIntoMap(vmap, "CoinbaseAdded", Log.Data)
+			err := CoinBaseABI.UnpackIntoMap(vmap, "CoinbaseAdded", eventLog.Data)
 			if err != nil {
-				log.Error("Decode log data error")
+				log.Error("abi decode:", err)
 			}
-			fmt.Printf("vmap: %v\n", vmap)
-			// Parse address and rewards array
-			// selectedAddresses := vmap["selectedAddresses"].([]common.Address)
-			// rewards := vmap["rewards"].([]*big.Int)
-
 		}
-
 	}
 
 }
@@ -141,7 +135,7 @@ func lookupCodeInfo(client client, name string) *algoInfo {
 		log.Error(fmt.Sprintf("Call contract codeStorage err! Algorithm:%s", name))
 	}
 	msg := ethereum.CallMsg{
-		To:   &CodeStorageAddress,
+		To:   &common.CodeStorageAddress,
 		Data: input,
 	}
 	output, err := client.CallContract(context.Background(), msg, nil)
@@ -171,7 +165,7 @@ func IsUpgradeAlgorithm(addr common.Address, funcSelector []byte) bool {
 		return false
 	} else {
 		funcSelector = funcSelector[:4]
-		return addr == CodeStorageAddress && bytes.Equal(CodeStorageABI.Methods["callFunc"].ID, funcSelector)
+		return addr == common.CodeStorageAddress && bytes.Equal(CodeStorageABI.Methods["callFunc"].ID, funcSelector)
 	}
 }
 
@@ -183,4 +177,17 @@ func convertBytesToString(array [][10]byte) []string {
 		result[i] = string(array[i][:])
 	}
 	return result
+}
+
+func bindCoinBaseEvent(client client, eventHash common.Hash) (ethereum.Subscription, chan (types.Log), error) {
+	query := ethereum.FilterQuery{
+		Topics: [][]common.Hash{{eventHash}}, // Event hash
+	}
+	logCh := make(chan types.Log)
+	// Subscribe to logs that meet FilterQuery,and logs will be stored in the logCh
+	sub, err := client.SubscribeFilterLogs(context.Background(), query, logCh)
+	if err != nil {
+		log.Error("Failed to subscribe to cryptoupgrade logs: %v", err)
+	}
+	return sub, logCh, nil
 }

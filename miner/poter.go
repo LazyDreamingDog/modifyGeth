@@ -179,3 +179,14 @@ func (p *poter) ExecuteTxs(ctx context.Context, exeRq *pb.ExecuteTxRequest) (*pb
 
 	return &pb.ExecuteTxResponse{Tx: exeRq.Tx, Flag: true, TxID: tx.Hash().Bytes()}, nil
 }
+
+func (p *poter) GetIncentive(ctx context.Context, getIncentiveRq *pb.GetIncentiveRequest) (*pb.GetIncentiveResponse, error) {
+	incentiveArray, newEnd, err := p.chain.GetCoinBaseIncentive(getIncentiveRq.Begin, getIncentiveRq.End)
+	if err != nil {
+		return &pb.GetIncentiveResponse{BciReward: nil}, err
+	}
+	return &pb.GetIncentiveResponse{
+		BciReward: incentiveArray,
+		End:       newEnd,
+	}, nil
+}

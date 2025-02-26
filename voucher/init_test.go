@@ -11,7 +11,7 @@ import (
 func TestABI(t *testing.T) {
 	fmt.Printf("BalanceOf: %v\n", BalanceOf)
 
-	fmt.Printf("VoucherAddress: %v\n", VoucherAddress)
+	fmt.Printf("VoucherAddress: %v\n", common.MutiVoucherAddress)
 
 	tokenName := "BitCoin"
 	a := make([]byte, hex.EncodedLen(len(tokenName)))

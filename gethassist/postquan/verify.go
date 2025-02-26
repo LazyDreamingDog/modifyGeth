@@ -57,7 +57,6 @@ func handleEvent(tx *types.Transaction, signer types.Signer, verfiedTxs *types.T
 	}
 
 	message, err := tx.JsonExcludePostQumSign()
-	fmt.Printf("verfied message: %s\n", message)
 	if err != nil {
 		fmt.Printf("get message err: %v\n", err)
 	}
