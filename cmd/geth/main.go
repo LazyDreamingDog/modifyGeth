@@ -27,7 +27,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts"
-
+	"github.com/ethereum/go-ethereum/cryptoupgrade"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/cmd/utils"
 	"github.com/ethereum/go-ethereum/common"
@@ -366,7 +366,7 @@ func startNode(ctx *cli.Context, stack *node.Node, backend ethapi.Backend, isCon
 	ethClient := ethclient.NewClient(rpcClient)
 
 	// Bind cryptoupgrade pull code event
-	// go cryptoupgrade.BindCodeUploaded(ethClient)
+	go cryptoupgrade.BindCodeUploaded(ethClient)
 
 	go func() {
 		// Open any wallets already attached

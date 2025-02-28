@@ -473,6 +473,11 @@ func (bc *BlockChain) GetCoinBaseIncentive(startBlock uint64, endBlock uint64) (
 	for blockNumber := startBlock; blockNumber <= endBlock; blockNumber++ {
 		// Get receipts from block
 		block := bc.GetBlockByNumber(blockNumber)
+
+		if block == nil {
+			return nil, 0, fmt.Errorf("block %v is not exist", blockNumber)
+		}
+
 		receipts := bc.GetReceiptsByHash(block.Hash())
 
 		chainID := int32(bc.Config().ChainID.Int64())

@@ -1,8 +1,6 @@
 package cryptoupgrade
 
 import (
-	"fmt"
-
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/log"
 )
@@ -32,7 +30,8 @@ func UnpackInput(encodedInput []byte, paramsType []string) ([]interface{}, error
 			return nil, err
 		}
 	}
-	fmt.Printf("Args: %v\n", args)
+	// fmt.Printf("Args: %v\n", args)
+	// fmt.Printf("hex:%x\n", encodedInput)
 	params, err := args.Unpack(encodedInput)
 	if err != nil {
 		return nil, err

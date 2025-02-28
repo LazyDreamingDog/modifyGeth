@@ -11,7 +11,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	interest "github.com/ethereum/go-ethereum/Interest"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/consensus"
@@ -25,7 +24,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/proto/pb"
-	"github.com/holiman/uint256"
+
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 )
@@ -975,7 +974,7 @@ func (e *executor) executeTransactions(env *executor_env, txs types.Transactions
 
 	var coalescedLogs []*types.Log
 	// fmt.Println("start exec,txs len:", len((txs)))
-	log.Info("start execute transactions", "receive init txs len:", txs.Len())
+	// log.Info("start execute transactions", "receive init txs len:", txs.Len())
 	env.initTxcount = txs.Len()
 	for _, tx := range txs {
 		if e.isCorrectFromTransferTx(tx) {
@@ -1183,17 +1182,17 @@ func (e *executor) executeTransaction(env *executor_env, tx *types.Transaction) 
 
 		// 加载信息进入env
 		env.hasBci = true
-		df := &pb.DciProof{
+		df := &pb.BciProof{
 			Height:    env.header.Number.Uint64(),
 			BlockHash: nil, // 空着这个不填
 			TxHash:    tx.Hash().Bytes(),
 			BciType:   10,
 		}
-		dr := &pb.DciReward{
+		dr := &pb.BciReward{
 			Address:  env.state.GetBeneficiaryAddress(contractAddress).Bytes(),
 			Amount:   int64(env.state.GetEarnInterest(contractAddress)),
 			ChainID:  int32(e.networkId),
-			DciProof: df,
+			BciProof: df,
 		}
 		env.dciRewards = append(env.dciRewards, dr)
 	}

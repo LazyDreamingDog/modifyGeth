@@ -32,62 +32,91 @@ func TestABICode(t *testing.T) {
 	t.Logf("temp[1].([]byte): %s\n", temp[1].([]byte))
 }
 
-func TestPackVar(t *testing.T) {
-	intType, _ := abi.NewType("int256", "", nil)
-	args := abi.Arguments{
-		abi.Argument{Type: intType},
-		abi.Argument{Type: intType},
-	}
-	t.Log(args)
-	a := big.NewInt(100)
-	b := big.NewInt(100)
-	encodeData, err := args.Pack(a, b)
-	if err != nil {
-		t.Error("Encode err:", err)
-	} else {
-		hexData := common.Bytes2Hex(encodeData)
-		t.Log(fmt.Sprintf("outputdata: %v , length: %d", hexData, len(hexData)))
-	}
-	// Decode
-	params, err := args.Unpack(encodeData)
-	if err != nil {
-		t.Error("decode err:", err)
-	} else {
-		ra := params[0].(*big.Int)
-		rb := params[1].(*big.Int)
-		t.Log(ra, rb)
-	}
-}
-
-// Try to decode abi data, only using params type not contract abi.
-func TestDecode(t *testing.T) {
+func TestPackUnpackVar(t *testing.T) {
 	// Define solidity type
 	stringType, _ := abi.NewType("string", "", nil)
 	uint256Type, _ := abi.NewType("uint256", "", nil)
 	addressType, _ := abi.NewType("address", "", nil)
 	intType, _ := abi.NewType("int256", "", nil)
-	args := abi.Arguments{
-		abi.Argument{Type: uint256Type},
-		abi.Argument{Type: addressType},
-		abi.Argument{Type: stringType},
-		abi.Argument{Type: intType},
-	}
-	a := big.NewInt(11)
-	b := common.BytesToAddress([]byte{10})
-	c := "liuqi"
-	d := big.NewInt(1)
-	encodeData, err := args.Pack(a, b, c, d)
-	if err != nil {
-		t.Error("Encode err:", err)
-	}
-	decodeData, err := args.Unpack(encodeData)
-	if err != nil {
-		t.Error("Decode err", err)
-	}
-	t.Log(decodeData[0].(*big.Int))
-	t.Log(decodeData[1].(common.Address))
-	t.Log(decodeData[2].(string))
-	t.Log(decodeData[3].(*big.Int))
+	bytesType, _ := abi.NewType("bytes", "", nil)
+
+	t.Run("Function Add test", func(t *testing.T) {
+		args := abi.Arguments{
+			abi.Argument{Type: intType},
+			abi.Argument{Type: intType},
+		}
+		t.Log(args)
+		a := big.NewInt(100)
+		b := big.NewInt(100)
+		encodeData, err := args.Pack(a, b)
+		if err != nil {
+			t.Error("Encode err:", err)
+		} else {
+			hexData := common.Bytes2Hex(encodeData)
+			t.Log(fmt.Sprintf("outputdata: %v , length: %d", hexData, len(hexData)))
+		}
+		// Decode
+		params, err := args.Unpack(encodeData)
+		if err != nil {
+			t.Error("decode err:", err)
+		} else {
+			ra := params[0].(*big.Int)
+			rb := params[1].(*big.Int)
+			t.Log(ra, rb)
+		}
+	})
+	t.Run("test", func(t *testing.T) {
+		args := abi.Arguments{
+			abi.Argument{Type: uint256Type},
+			abi.Argument{Type: addressType},
+			abi.Argument{Type: stringType},
+			abi.Argument{Type: intType},
+		}
+		a := big.NewInt(11)
+		b := common.BytesToAddress([]byte{10})
+		c := "liuqi"
+		d := big.NewInt(1)
+		encodeData, err := args.Pack(a, b, c, d)
+		if err != nil {
+			t.Error("Encode err:", err)
+		}
+		decodeData, err := args.Unpack(encodeData)
+		if err != nil {
+			t.Error("Decode err", err)
+		}
+		t.Log(decodeData[0].(*big.Int))
+		t.Log(decodeData[1].(common.Address))
+		t.Log(decodeData[2].(string))
+		t.Log(decodeData[3].(*big.Int))
+	})
+
+	t.Run("Function Sum256 test", func(t *testing.T) {
+		args := abi.Arguments{
+			abi.Argument{Type: bytesType},
+		}
+		t.Log(args)
+		a := []byte("Hello world!")
+		encodeData, err := args.Pack(a)
+		if err != nil {
+			t.Error("Encode err:", err)
+		} else {
+			t.Logf("%x", encodeData)
+		}
+		decodeData, err := args.Unpack(encodeData)
+		if err != nil {
+			t.Error("Decode err", err)
+		} else {
+			t.Logf("%s", decodeData...)
+		}
+
+		encodedInput := "0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000c48656c6c6f20776f726c64210000000000000000000000000000000000000000"
+		result, err := UnpackInput(common.Hex2Bytes(encodedInput), []string{"bytes"})
+		if err != nil {
+			t.Fatal(err)
+		} else {
+			t.Logf("%s", result)
+		}
+	})
 }
 
 func TestParseEvent(t *testing.T) {
@@ -103,7 +132,7 @@ func TestParseEvent(t *testing.T) {
 		}
 	})
 
-	t.Run("neg", func(t *testing.T) {
+	t.Run("Coinbase", func(t *testing.T) {
 		CoinBaseABI, _ := abi.JSON(strings.NewReader(common.CoinbaseABI_json))
 		// Attention data must delete "0x"
 		data := "00000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000100000000000000000000000057f96028ba3258ebfb4940d67443967cf23e3fc4000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000de"
@@ -119,6 +148,24 @@ func TestParseEvent(t *testing.T) {
 		// t.Log("selectedAddresses:", selectedAddresses)
 		// t.Log("rewards:", rewards)
 	})
+
+	t.Run("MutiVoucher", func(t *testing.T) {
+		MutivoucherABI, _ := abi.JSON(strings.NewReader(common.MutivoucherABI_json))
+		// Attention data must delete "0x"
+		data := "00000000000000000000000057f96028ba3258ebfb4940d67443967cf23e3fc4000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007426974436f696e00000000000000000000000000000000000000000000000000"
+		vmap := make(map[string]interface{})
+		err := MutivoucherABI.UnpackIntoMap(vmap, "VoucherPurchased", common.Hex2Bytes(data))
+		if err != nil {
+			t.Fatal("abi decode:", err)
+		}
+		t.Log(vmap)
+
+		// selectedAddresses := vmap["selectedAddresses"].([]common.Address)
+		// rewards := vmap["rewards"].([]*big.Int)
+		// t.Log("selectedAddresses:", selectedAddresses)
+		// t.Log("rewards:", rewards)
+	})
+
 }
 
 func TestMethodID(t *testing.T) {

@@ -10,17 +10,10 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-var (
-	sourceFile = "./testgo/src/add.go"
-	pluginFile = "./testgo/so/add.so"
-)
-
-func TestCompilePlugin(t *testing.T) {
-	compilePlugin(sourceFile, pluginFile)
-	// compileModulePlugin(sourceFile, modulepluginFile)
-}
-
 func TestAdd(t *testing.T) {
+	sourceFile := "./plugin/src/Add.go"
+	pluginFile := "./plugin/so/Add.so"
+
 	compilePlugin(sourceFile, pluginFile)
 
 	funcName := "Add"
@@ -34,6 +27,8 @@ func TestAdd(t *testing.T) {
 	input, err := args.Pack(a, b)
 	if err != nil {
 		t.Error("Encode err:", err)
+	} else {
+		t.Logf("input(Hex):%x", input)
 	}
 	// Construct Info
 	algoInfoMap[funcName] = algoInfo{
@@ -49,18 +44,14 @@ func TestAdd(t *testing.T) {
 		t.Fail()
 	}
 
-	t.Logf("output(Hex): %v\n", common.Bytes2Hex(output))
+	t.Logf("output: %v\n", common.Bytes2Hex(output))
 	t.Logf("gas: %v\n", gas)
 }
-
-func TestCallFunction(t *testing.T){
-	
-}
-
 
 // ! Go plugin don't approve struct export, only approve function and variable
 func TestStructInPlugin(t *testing.T) {
 	funcName := "NewStudent"
+	pluginFile := ""
 	p, _ := plugin.Open(pluginFile)
 	NewStudentSymbol, err := p.Lookup(funcName)
 	if err != nil {
@@ -81,12 +72,11 @@ func TestStructInPlugin(t *testing.T) {
 	fmt.Printf("instance: %v\n", instance)
 }
 
-// * Test Hash
 func TestBlake2b(t *testing.T) {
 	funcName := "Sum256"
-	srcFile := "./testgo/src/blake2b.go"
+	srcFile := "./plugin/src/blake2b.go"
 
-	plugFile := "./testgo/so/" + funcName + ".so"
+	plugFile := "./plugin/so/" + funcName + ".so"
 	compilePlugin(srcFile, plugFile)
 
 	// Encode
@@ -98,22 +88,22 @@ func TestBlake2b(t *testing.T) {
 	input, err := args.Pack(a)
 	if err != nil {
 		t.Error("Encode err:", err)
+	}else{
+		t.Logf("\ninput: %s\n input(Hex):%x \n", input, input)
 	}
 	// Construct Info
 	algoInfoMap[funcName] = algoInfo{
 		code:  "",
 		gas:   10,
 		itype: "bytes",
-		otype: "bytes",
+		otype: "bytes32",
 	}
 	// Call plugin
 	output, gas, err := callUpgradeAlgo(funcName, plugFile, 100, input)
 	if err != nil {
-		t.Error(err)
-		t.Fail()
+		t.Fatal(err)
 	}
-
-	t.Logf("output(Hex): %v\n", common.Bytes2Hex(output))
+	t.Logf("output(Hex): %v\n", output)
 	t.Logf("gas: %v\n", gas)
 }
 
@@ -151,7 +141,7 @@ func TestBls(t *testing.T) {
 	funcName := "KeygenWithSeedAPI"
 	// srcFile := "./testgo/src/bls.go"
 
-	pluginFile = "./testgo/so/bls.so"
+	pluginFile := "./testgo/so/bls.so"
 	// plugFile := "./testgo/so/" + funcName + ".so"
 	// compilePlugin(srcFile, plugFile)
 
