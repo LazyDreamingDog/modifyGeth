@@ -29,7 +29,7 @@ build/_vendor/pkg
 /geth*.zip
 
 # crytoupgrade test file 
-/cryptoupgrade/testgo/
+/cryptoupgrade/plugin
 
 # travis
 profile.tmp

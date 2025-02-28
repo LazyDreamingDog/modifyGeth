@@ -41,11 +41,12 @@ func TestDecompress(t *testing.T) {
 	if err != nil {
 		fmt.Printf("err: %v\n", err)
 	}
+
 }
 
 // Use this test to get compressed string, as input for geth.js command line
 func TestCompress(t *testing.T) {
-	compressFile := "./testgo/src/add.go"
+	compressFile := "./plugin/src/blake2b.go"
 	compressedString, err := compressFileToString(compressFile)
 	if err != nil {
 		fmt.Printf("err: %v\n", err)
@@ -68,6 +69,7 @@ func TestBytes(t *testing.T) {
 	// When passing parameters to the solidity compiler, the byte needs to be converted to hexadecimal
 	result2 := "0x" + common.Bytes2Hex(itypeBytes[:])
 	fmt.Printf("result2: %v\n", result2)
+	
 }
 
 func TestEventHash(t *testing.T) {

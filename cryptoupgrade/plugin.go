@@ -8,7 +8,6 @@ import (
 	"plugin"
 	"reflect"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/cryptoupgrade/preload"
 	"github.com/ethereum/go-ethereum/log"
 )
@@ -42,7 +41,7 @@ func capitalString(str string) string {
 func CallAlgorithm(algoName string, gas uint64, encodedInput []byte) ([]byte, uint64, error) {
 	algoName = capitalString(algoName)
 
-	log.Info(fmt.Sprintf("Call algorithm %s,encodedinput: %s\n", algoName, common.Bytes2Hex(encodedInput)))
+	log.Info(fmt.Sprintf("Call algorithm %s,encodedinput: %s\n", algoName, encodedInput))
 
 	p, ok := preload.IsPreLoad(algoName)
 	if ok {
@@ -65,10 +64,12 @@ func callUpgradeAlgo(funcName string, pluginPath string, gas uint64, encodedInpu
 		return nil, gas, errors.New("out of gas")
 	}
 
+	
 	// Decode input
 	input, err := UnpackInput(encodedInput, inputType)
 	if err != nil {
 		log.Error("Unpack input from callFunc error:", err)
+		fmt.Println("Unpack input from callFunc error:", err)
 		return nil, gas, err
 	}
 
@@ -76,6 +77,7 @@ func callUpgradeAlgo(funcName string, pluginPath string, gas uint64, encodedInpu
 	output, err := callPlugin(pluginPath, funcName, input)
 	if err != nil {
 		log.Error("Call Plugin error", err)
+		fmt.Println("Call Plugin error", err)
 		return nil, gas, err
 	}
 
@@ -83,6 +85,7 @@ func callUpgradeAlgo(funcName string, pluginPath string, gas uint64, encodedInpu
 	encodedOutput, err := PackOutput(output, outputType)
 	if err != nil {
 		log.Error("Pack output error:", err)
+		fmt.Println("Pack output error:", err)
 		return nil, gas, err
 	}
 
