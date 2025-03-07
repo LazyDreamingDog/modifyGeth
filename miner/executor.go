@@ -1188,7 +1188,7 @@ func (e *executor) executeTransaction(env *executor_env, tx *types.Transaction) 
 			TxHash:    tx.Hash().Bytes(),
 			BciType:   10,
 		}
-		dr := &pb.BciReward{
+		br := &pb.BciReward{
 			Address:  env.state.GetBeneficiaryAddress(contractAddress).Bytes(),
 			Amount:   int64(env.state.GetEarnInterest(contractAddress)),
 			ChainID:  int32(e.networkId),
