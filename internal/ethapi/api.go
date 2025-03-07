@@ -676,6 +676,24 @@ func (s *BlockChainAPI) GetSecurityLevel(ctx context.Context, address common.Add
 	return hexutil.Uint64(b), state.Error()
 }
 
+func (s *BlockChainAPI) GetPledgeYear(ctx context.Context, address common.Address, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Uint64, error) {
+	state, _, err := s.b.StateAndHeaderByNumberOrHash(ctx, blockNrOrHash)
+	if state == nil || err != nil {
+		return 0, err
+	}
+	b := state.GetPledgeYear(address)
+	return hexutil.Uint64(b), state.Error()
+}
+
+func (s *BlockChainAPI) GetPledgeAmount(ctx context.Context, address common.Address, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Uint64, error) {
+	state, _, err := s.b.StateAndHeaderByNumberOrHash(ctx, blockNrOrHash)
+	if state == nil || err != nil {
+		return 0, err
+	}
+	b := state.GetPledgeAmount(address)
+	return hexutil.Uint64(b), state.Error()
+}
+
 type RPCPledgeInfo struct {
 	PledgeAmount uint64 `json:"pledgeAmount"`
 	PledgeYear   uint64 `json:"pledgeYear"`

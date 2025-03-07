@@ -5332,6 +5332,22 @@ var methods = function () {
         outputFormatter: formatters.outputBigNumberFormatter
     });
 
+    var getPledgeYear = new Method({
+        name: 'getPledgeYear',
+        call: 'eth_getPledgeYear',
+        params: 2,
+        inputFormatter: [formatters.inputAddressFormatter, formatters.inputDefaultBlockNumberFormatter],
+        outputFormatter: formatters.outputBigNumberFormatter
+    });
+
+    var getPledgeAmount = new Method({
+        name: 'getPledgeAmount',
+        call: 'eth_getPledgeAmount',
+        params: 2,
+        inputFormatter: [formatters.inputAddressFormatter, formatters.inputDefaultBlockNumberFormatter],
+        outputFormatter: formatters.outputBigNumberFormatter
+    });
+
     var getPledgeInfo = new Method({
         name: 'getPledgeInfo',
         call: 'eth_getPledgeInfo',
@@ -5500,6 +5516,8 @@ var methods = function () {
         getBalance,
         getInterest,
         getSecurityLevel,
+        getPledgeYear,
+        getPledgeAmount,
         getPledgeInfo,
         getStorageAt,
         getCode,
