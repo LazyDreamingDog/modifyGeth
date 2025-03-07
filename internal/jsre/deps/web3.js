@@ -3852,6 +3852,26 @@ var outputBlockFormatter = function(block) {
 };
 
 /**
+ * Formats the output of a block to its proper values
+ *
+ * @method outputPledgeInfoFormatter
+ * @param {Object} pledgeInfo
+ * @returns {Object}
+*/
+var outputPledgeInfoFormatter = function(pledgeInfo) {
+    // Transform numeric fields to decimal
+    pledgeInfo.pledgeAmount = utils.toDecimal(pledgeInfo.pledgeAmount);
+    pledgeInfo.pledgeYear = utils.toDecimal(pledgeInfo.pledgeYear);
+    pledgeInfo.startTime = utils.toDecimal(pledgeInfo.startTime);
+    pledgeInfo.interestRate = utils.toDecimal(pledgeInfo.interestRate);
+    pledgeInfo.earnInterest = utils.toDecimal(pledgeInfo.earnInterest);
+    pledgeInfo.annualFee = utils.toDecimal(pledgeInfo.annualFee);
+    pledgeInfo.lastAnnualFeeTime = utils.toDecimal(pledgeInfo.lastAnnualFeeTime);
+
+    return pledgeInfo;
+};
+
+/**
  * Formats the output of a log
  *
  * @method outputLogFormatter
@@ -3978,6 +3998,7 @@ module.exports = {
     outputTransactionFormatter: outputTransactionFormatter,
     outputTransactionReceiptFormatter: outputTransactionReceiptFormatter,
     outputBlockFormatter: outputBlockFormatter,
+    outputPledgeInfoFormatter: outputPledgeInfoFormatter,
     outputLogFormatter: outputLogFormatter,
     outputPostFormatter: outputPostFormatter,
     outputSyncingFormatter: outputSyncingFormatter
@@ -5295,6 +5316,30 @@ var methods = function () {
         outputFormatter: formatters.outputBigNumberFormatter
     });
 
+    var getInterest = new Method({
+        name: 'getInterest',
+        call: 'eth_getInterest',
+        params: 2,
+        inputFormatter: [formatters.inputAddressFormatter, formatters.inputDefaultBlockNumberFormatter],
+        outputFormatter: formatters.outputBigNumberFormatter
+    });
+
+    var getSecurityLevel = new Method({
+        name: 'getSecurityLevel',
+        call: 'eth_getSecurityLevel',
+        params: 2,
+        inputFormatter: [formatters.inputAddressFormatter, formatters.inputDefaultBlockNumberFormatter],
+        outputFormatter: formatters.outputBigNumberFormatter
+    });
+
+    var getPledgeInfo = new Method({
+        name: 'getPledgeInfo',
+        call: 'eth_getPledgeInfo',
+        params: 2,
+        inputFormatter: [formatters.inputAddressFormatter, formatters.inputDefaultBlockNumberFormatter],
+        outputFormatter: formatters.outputPledgeInfoFormatter
+    });
+
     var getStorageAt = new Method({
         name: 'getStorageAt',
         call: 'eth_getStorageAt',
@@ -5453,6 +5498,9 @@ var methods = function () {
 
     return [
         getBalance,
+        getInterest,
+        getSecurityLevel,
+        getPledgeInfo,
         getStorageAt,
         getCode,
         getBlock,

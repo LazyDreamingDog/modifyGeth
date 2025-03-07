@@ -45,7 +45,7 @@ type executor_env struct {
 
 	// 判断是否有bci转换
 	hasBci     bool
-	dciRewards []*pb.BciReward
+	bciRewards []*pb.BciReward
 
 	// 最后执行的结束后的结果，有多少tx被包括，他们的收据是什么
 	// 打包区块使用
@@ -195,7 +195,7 @@ type executorClient struct {
 
 	transferClient pb.TransferGRPCClient
 
-	dciClient pb.BciExectorClient
+	bciClient pb.BciExectorClient
 }
 
 // need add a loop routine to sendTx to consensus layer, when execCh has new txs
@@ -251,7 +251,7 @@ func (ec *executorClient) verifyTokenTransitionTx(tx *types.Transaction) (bool, 
 		Value: tx.Value().Int64(),
 		Proof: tx.Data(),
 	}
-	res, err := ec.dciClient.VerifyUTXO(context.Background(), request)
+	res, err := ec.bciClient.VerifyUTXO(context.Background(), request)
 	if err != nil {
 		return false, err
 	}
@@ -259,23 +259,23 @@ func (ec *executorClient) verifyTokenTransitionTx(tx *types.Transaction) (bool, 
 }
 
 func (ec *executorClient) sendInterestTx(ia common.Address, interest *big.Int, nid uint64, height uint64, bHash []byte, txHash []byte) (bool, error) {
-	dciProof := &pb.BciProof{
+	bciProof := &pb.BciProof{
 		Height:    height,
 		BlockHash: bHash,
 		TxHash:    txHash,
 		BciType:   10,
 	}
 
-	dciR := &pb.BciReward{
+	bciR := &pb.BciReward{
 		Address:  ia.Bytes(),
 		Amount:   interest.Int64(),
 		ChainID:  int32(nid),
-		BciProof: dciProof,
+		BciProof: bciProof,
 	}
 	request := &pb.SendBciRequest{
-		BciReward: []*pb.BciReward{dciR},
+		BciReward: []*pb.BciReward{bciR},
 	}
-	res, err := ec.dciClient.SendBci(context.Background(), request)
+	res, err := ec.bciClient.SendBci(context.Background(), request)
 	if err != nil {
 		return false, err
 	}
@@ -338,7 +338,7 @@ type executor struct {
 }
 
 // newExecutor creates a new executor.
-func newExecutor(config *Config, chainConfig *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, isLocalBlock func(header *types.Header) bool, init bool, consensusCli pb.P2PClient, transferCli pb.TransferGRPCClient, dciClient pb.BciExectorClient) *executor {
+func newExecutor(config *Config, chainConfig *params.ChainConfig, engine consensus.Engine, eth Backend, mux *event.TypeMux, isLocalBlock func(header *types.Header) bool, init bool, consensusCli pb.P2PClient, transferCli pb.TransferGRPCClient, bciClient pb.BciExectorClient) *executor {
 	executor := &executor{
 		config:      config,
 		chainConfig: chainConfig,
@@ -412,7 +412,7 @@ func newExecutor(config *Config, chainConfig *params.ChainConfig, engine consens
 	executor.execClient = &executorClient{
 		consensusClient: consensusCli,
 		transferClient:  transferCli,
-		dciClient:       dciClient,
+		bciClient:       bciClient,
 	}
 
 	// Register the grpc server
@@ -716,7 +716,7 @@ func (e *executor) makeEnv(parent *types.Header, header *types.Header, coinbase 
 
 		// 初始化bci转换信息
 		hasBci:     false,
-		dciRewards: []*pb.BciReward{},
+		bciRewards: []*pb.BciReward{},
 	}
 
 	env.tcount = 0
@@ -1194,7 +1194,7 @@ func (e *executor) executeTransaction(env *executor_env, tx *types.Transaction) 
 			ChainID:  int32(e.networkId),
 			BciProof: df,
 		}
-		env.dciRewards = append(env.dciRewards, dr)
+		env.bciRewards = append(env.bciRewards, br)
 	}
 
 	env.txs = append(env.txs, tx)
@@ -1268,11 +1268,11 @@ func (e *executor) writeToChain(env *executor_env) error {
 	// 如果env有bci转换，则发送bci转换交易
 	if env.hasBci {
 		// 补充blockHash
-		for _, dciReward := range env.dciRewards {
-			dciReward.BciProof.BlockHash = hash.Bytes()
+		for _, bciReward := range env.bciRewards {
+			bciReward.BciProof.BlockHash = hash.Bytes()
 		}
-		e.execClient.dciClient.SendBci(context.Background(), &pb.SendBciRequest{
-			BciReward: env.dciRewards,
+		e.execClient.bciClient.SendBci(context.Background(), &pb.SendBciRequest{
+			BciReward: env.bciRewards,
 		})
 	}
 
